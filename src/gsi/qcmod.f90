@@ -2356,22 +2356,17 @@ subroutine qc_irsnd(nchanl,is,ndat,nsig,ich,sea,land,ice,snow,luse,goessndr,   &
      end if
   endif
 
-!
-! Temporary additional check for CrIS to reduce influence of land points on window channels (particularly important for bias correction)
-!
-  if (cris .and. .not. sea) then
-     do i=1,nchanl
-        if (ts(i) > 0.2_r_kind) then
-           !             QC3 in statsrad
-           if(luse .and. varinv(i) > zero) &
-                aivals(10,is)   = aivals(10,is) + one
+! Only use surface channels over ocean
+  if (.not. sea) then
+     do i=1, nchanl
+        if ((wavenumber(i) > 800.0_r_kind .and. wavenumber(i) < 1100.0_r_kind) .or. &
+             wavenumber(i) > 2500.0_r_kind) then
            varinv(i) = zero
-           if(id_qc(i) == igood_qc)id_qc(i)=ifail_sfcir_qc
-        end if
+           varinv_use(i) = zero
+        endif
      end do
-  end if
-
-
+  endif
+  
 !
 ! Apply Tz retrieval
 !
