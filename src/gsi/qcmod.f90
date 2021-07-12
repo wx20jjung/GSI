@@ -2412,15 +2412,6 @@ subroutine qc_irsnd(nchanl,is,ndat,nsig,ich,sea,land,ice,snow,luse,goessndr,   &
      end if
   end do
 
-  do i=1,nchanl
-     m=ich(i)
-     if (sea .and. isst_det(m) > 0 .and. tsavg5 < 274.0_r_kind) then
-        varinv(i) = zero
-        if (  id_qc(i) == igood_qc ) id_qc(i) = ifail_isst_det
-     endif
-  end do
-
-
   if(hirs) then
     do i=1,nchanl
       m=ich(i)
