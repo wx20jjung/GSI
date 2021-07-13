@@ -178,6 +178,7 @@ module qcmod
   public :: qc_atms
   public :: qc_noirjaco3
   public :: qc_noirjaco3_pole
+  public :: ir_surf_chans
   public :: qc_satwnds
   public :: qc_gmi
   public :: qc_amsr2
@@ -205,6 +206,7 @@ module qcmod
   logical use_poq7
   logical qc_noirjaco3
   logical qc_noirjaco3_pole
+  logical ir_surf_chans
   logical newvad
   logical tdrerr_inflate
   logical qc_satwnds
@@ -431,6 +433,8 @@ contains
 
     qc_noirjaco3 = .false.  ! when .f., use O3 Jac from IR instruments
     qc_noirjaco3_pole = .false. ! true=do not use O3 Jac from IR instruments near poles
+
+    ir_surf_chans = .false. ! true= review use/reject of infrared surface channels in qc_irsnd 
 
     qc_satwnds=.true. ! default: remove lots of SatWind at mid-tropospheric levels
 
@@ -2357,7 +2361,7 @@ subroutine qc_irsnd(nchanl,is,ndat,nsig,ich,sea,land,ice,snow,luse,goessndr,   &
   endif
 
 ! Only use surface channels over ocean
-  if (.not. sea) then
+  if (.not. sea .and. ir_surf_chans) then
      do i=1, nchanl
         if ((wavenumber(i) > 800.0_r_kind .and. wavenumber(i) < 1100.0_r_kind) .or. &
              wavenumber(i) > 2500.0_r_kind) then
