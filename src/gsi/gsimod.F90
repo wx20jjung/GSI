@@ -87,7 +87,7 @@
   use qcmod, only: dfact,dfact1,create_qcvars,destroy_qcvars,&
       erradar_inflate,tdrerr_inflate,use_poq7,qc_satwnds,&
       init_qcvars,vadfile,noiqc,c_varqc,qc_noirjaco3,qc_noirjaco3_pole,&
-      buddycheck_t,buddydiag_save,njqc,vqc,nvqc,hub_norm,vadwnd_l2rw_qc,ir_surf_chans &
+      buddycheck_t,buddydiag_save,njqc,vqc,nvqc,hub_norm,vadwnd_l2rw_qc,ir_surf_chans, &
       pvis,pcldch,scale_cv,estvisoe,estcldchoe,vis_thres,cldch_thres,cao_check
   use qcmod, only: troflg,lat_c,nrand
   use pcpinfo, only: npredp,diag_pcp,dtphys,deltim,init_pcp
