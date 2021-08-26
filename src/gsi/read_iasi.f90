@@ -169,7 +169,7 @@ subroutine read_iasi(mype,val_iasi,ithin,isfcalc,rmesh,jsatid,gstime,&
   real(r_double),dimension(7):: cloud_frac
   integer(i_kind) :: bufr_size
   
-  real(r_kind)      :: step, start,step_adjust
+  real(r_kind)      :: step, start
   character(len=8)  :: subset
   character(len=4)  :: senname
   character(len=80) :: allspotlist
@@ -187,12 +187,11 @@ subroutine read_iasi(mype,val_iasi,ithin,isfcalc,rmesh,jsatid,gstime,&
 
 
 ! Other work variables
-  real(r_kind)     :: piece
   real(r_kind)     :: rsat, dlon, dlat
   real(r_kind)     :: dlon_earth,dlat_earth,dlon_earth_deg,dlat_earth_deg
-  real(r_kind)     :: lza, lzaest,sat_height_ratio
+  real(r_kind)     :: lza,sat_height_ratio
   real(r_kind)     :: pred, crit1, dist1
-  real(r_kind)     :: sat_zenang
+  real(r_kind)     :: sat_zenang, sat_look_angle
   real(crtm_kind)  :: radiance
   real(r_kind)     :: tsavg,vty,vfr,sty,stp,sm,sn,zz,ff10,sfcr
   real(r_kind)     :: zob,tref,dtw,dtc,tz_tr
@@ -298,7 +297,6 @@ subroutine read_iasi(mype,val_iasi,ithin,isfcalc,rmesh,jsatid,gstime,&
   allocate(bufr_index(satinfo_nchan)) 
   ioff = ioff - 1 
 
-  step_adjust = 0.625_r_kind
 ! If all channels of a given sensor are set to monitor or not
 ! assimilate mode (iuse_rad<1), reset relative weight to zero.
 ! We do not want such observations affecting the relative
@@ -594,12 +592,10 @@ subroutine read_iasi(mype,val_iasi,ithin,isfcalc,rmesh,jsatid,gstime,&
            if ( ifov <= 60 ) sat_zenang = -sat_zenang
 
 !          Compare IASI satellite scan angle and zenith angle
-           piece = -step_adjust
-           if ( mod(ifovn,2) == 1) piece = step_adjust
-           lza = ((start + float((ifov-1)/4)*step) + piece)*deg2rad
+           lza = (start + float(ifovn-1)*step)*deg2rad
            sat_height_ratio = (earth_radius + linele(4))/earth_radius
-           lzaest = asin(sat_height_ratio*sin(lza))*rad2deg
-           if (abs(sat_zenang - lzaest) > one) then
+           sat_look_angle = asin(sat_height_ratio*sin(sat_zenang*deg2rad))
+           if (abs(sat_look_angle - lza) > one) then
               write(6,*)' READ_IASI WARNING uncertainty in lza ', &
                  lza*rad2deg,sat_zenang,sis,ifov,start,step,allspot(11),allspot(12),allspot(13)
               bad_line = iscn

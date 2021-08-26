@@ -1440,27 +1440,15 @@ contains
    integer(i_kind),intent(in):: iscan,jch
 
    integer(i_kind) ifov
-   real(r_kind) piece
 
-   if (index(isis,'iasi')/=0) then
-
-      piece=-0.625_r_kind
-      if (mod(iscan,2) == 1) piece = 0.625_r_kind
-      rnad_pos=radstart(jch)+radstep(jch)*float((iscan-1)/2)+piece
-
-   else
-
-      if (index(isis,'hirs')/=0 .and. (index(isis,'n16')/=0 .or. &
-                                       index(isis,'n17')/=0)) then
-         ifov=iscan+1
-      else if (index(isis,'atms') /= 0 .AND. maxscan < 96) then
-         ifov=iscan+3
-      else
-         ifov=iscan
-      end if
-      rnad_pos=radstart(jch)+radstep(jch)*float(ifov-1)
-
+   ifov = iscan
+   if (index(isis,'hirs')/=0 .and. (index(isis,'n16')/=0 .or. &
+                                    index(isis,'n17')/=0)) then
+      ifov=iscan+1
+   else if (index(isis,'atms') /= 0 .AND. maxscan < 96) then
+      ifov=iscan+3
    end if
+   rnad_pos=radstart(jch)+radstep(jch)*float(ifov-1)
 
    return
    end function rnad_pos
@@ -1611,8 +1599,8 @@ contains
       edge1 = 10
       edge2 = 81
    else if (index(isis,'iasi')/=0) then
-      step  = 3.334_r_kind
-      start = -48.33_r_kind
+      step  = 1.6667_r_kind
+      start = -49.1666_r_kind
       nstep = 60
       edge1 = 5
       edge2 = 56
