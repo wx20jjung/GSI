@@ -207,7 +207,7 @@ subroutine read_iasi(mype,val_iasi,ithin,isfcalc,rmesh,jsatid,gstime,&
   logical          :: iasi,quiet,cloud_info
 
   integer(i_kind)  :: ifov, instr, iscn, ioff, sensorindex
-  integer(i_kind)  :: i, j, l, iskip, ifovn, bad_line, ksatid, kidsat, llll
+  integer(i_kind)  :: i, j, l, iskip, ifovb, ifovn, bad_line, ksatid, kidsat, llll
   integer(i_kind)  :: nreal, isflg
   integer(i_kind)  :: itx, k, nele, itt, n
   integer(i_kind):: iexponent,maxinfo, bufr_nchan
@@ -470,7 +470,8 @@ subroutine read_iasi(mype,val_iasi,ithin,isfcalc,rmesh,jsatid,gstime,&
 !          of IASI scan allows us to remap 1-120 to 1-60.   Variable
 !          ifovn below contains the remapped IASI fov.  This value is
 !          passed on to and used in setuprad
-           ifovn = (ifov-1)/2 + 1
+           ifovb = (ifov-1)/2 + 1 
+           ifovn = (((ifov-1)/4) *2) + mod(ifovb,2)
 
 !          Remove data on edges
            if (.not. use_edges .and. &
@@ -592,7 +593,7 @@ subroutine read_iasi(mype,val_iasi,ithin,isfcalc,rmesh,jsatid,gstime,&
            if ( ifov <= 60 ) sat_zenang = -sat_zenang
 
 !          Compare IASI satellite scan angle and zenith angle
-           lza = (start + float(ifovn-1)*step)*deg2rad
+           lza = (start + float(ifovn)* step)*deg2rad
            sat_height_ratio = (earth_radius + linele(4))/earth_radius
            sat_look_angle = asin(sat_height_ratio*sin(sat_zenang*deg2rad))
            if (abs(sat_look_angle - lza) > one) then
@@ -601,7 +602,6 @@ subroutine read_iasi(mype,val_iasi,ithin,isfcalc,rmesh,jsatid,gstime,&
               bad_line = iscn
               cycle read_loop
            endif
-
 
 !          "Score" observation.  We use this information to identify "best" obs
 !          Locate the observation on the analysis grid.  Get sst and land/sea/ice
