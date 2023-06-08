@@ -448,9 +448,9 @@ contains
    real(r_kind),allocatable,dimension(:) :: tsim_cads, emissivity_cads, chan_level_cads
    real(r_kind),allocatable,dimension(:) :: ts_cads, emissivity_k_cads, data_s_cads
    real(r_kind),allocatable,dimension(:,:) :: ptau5_cads, temp_cads, wmix_cads, jacobian_cads
-   real(r_kind),dimension(7) :: cluster_fraction
-   real(r_kind),dimension(2,7) :: cluster_bt
-   real(r_kind),dimension(2) :: chan_stdev, model_bt
+   real(r_kind),dimension(7)   :: imager_cluster_fraction
+   real(r_kind),dimension(2,7) :: imager_cluster_bt
+   real(r_kind),dimension(2)   :: imager_chan_stdev, imager_model_bt
    character(20) :: isis_cads
    character(10) :: obstype_cads
 
@@ -799,10 +799,10 @@ contains
      if(.not.in_anybin) cycle
 
 ! Initialize variables needed for the infrared cloud and aerosol detections softwre.
-     cluster_fraction = zero
-     cluster_bt = zero
-     chan_stdev = zero
-     model_bt = zero
+     imager_cluster_fraction = zero
+     imager_cluster_bt = zero
+     imager_chan_stdev = zero
+     imager_model_bt = zero
 
 
      if(in_curbin) then
@@ -953,34 +953,39 @@ contains
           endif
           total_cloud_cover = tcc(1)
           cld = total_cloud_cover
-        else
+        else 
 
-!JAJ   if (iasi ) write(*,*) 'JAJ call_crtm in setuprad ',isis,'avhrr3'//isis(itmp1+1:itmp2)
-!JAJ   if (cris ) write(*,*) 'JAJ call_crtm in setuprad ',isis,'viirs-m'//isis(itmp1+1:itmp2)
+!  If not allsky
+!  Generate model derived imager values for IASI or CrIS for CADS
 
-! Generate model derived values of AVHRR (for IASI) or VIIRS (for CrIS) for CADS
-!JAJ          if ((iasi_cads .and. iasi) .or. (cris_cads .and. cris)) then
-          if ((iasi_cads .and. iasi) ) then
-             call destroy_crtm
-             itmp1_cads = len(trim(obstype))
-             itmp2_cads = len(trim(isis))
+          if ((iasi_cads .and. iasi) .or. (cris_cads .and. cris)) then
+               call destroy_crtm
+               itmp1_cads = len(trim(obstype))
+               itmp2_cads = len(trim(isis))
              if ( iasi ) then
                isis_cads = 'avhrr3'//isis(itmp1_cads+1:itmp2_cads)
                obstype_cads = 'avhrr'
                nchanl_cads = 3   ! CRTM channels 3 - 5
-!             elseif ( cris ) then
+             elseif ( cris ) then
 !!               isis_cads = 'viirs-m'//isis(itmp1+1:itmp2)
-!               if ( isis == 'cris-fsr_npp' ) isis_cads = 'viirs-m_npp'
-!               if ( isis == 'cris-fsr_n20' ) isis_cads = 'viirs-m_j1'
-!               if ( isis == 'cris-fsr_n21' ) isis_cads = 'viirs-m_j2'
-!               obstype_cads = 'viirs-m'
-!               nchanl_cads = 5   !CRTM channels 12 - 16
+               if ( isis == 'cris-fsr_npp' ) isis_cads = 'viirs-m_npp'
+               if ( isis == 'cris-fsr_n20' ) isis_cads = 'viirs-m_j1'
+               if ( isis == 'cris-fsr_n21' ) isis_cads = 'viirs-m_j2'
+               obstype_cads = 'viirs-m'
+               nchanl_cads = 5   !CRTM channels 12 - 16
              endif
              allocate(data_s_cads(nreal+nchanl_cads),ich_cads(nchanl_cads),tsim_cads(nchanl_cads),emissivity_cads(nchanl_cads), &
                       chan_level_cads(nchanl_cads),ptau5_cads(nsig,nchanl_cads), ts_cads(nchanl_cads),emissivity_k_cads(nchanl_cads), &
                       temp_cads(nsig,nchanl_cads),wmix_cads(nsig,nchanl_cads), jacobian_cads(nsigradjac,nchanl_cads)) 
 
-             ich_cads = (/3, 4, 5/)
+             jc = 0
+             do k=1,jpch_rad
+               if (isis_cads == nusis(k)) then
+                 jc = jc +1
+                 ich_cads(jc) = k
+               endif
+             end do
+
              data_s_cads = data_s(1:nreal+nchanl_cads,n)
              call init_crtm(init_pass,-99,mype,nchanl_cads,nreal,isis_cads,obstype_cads,radmod)
 
@@ -989,26 +994,25 @@ contains
                 trop5,tzbgr,dtsavg,sfc_speed, &
                 tsim_cads,emissivity_cads,chan_level_cads,ptau5_cads,ts_cads,emissivity_k_cads, &
                 temp_cads,wmix_cads,jacobian_cads,error_status)
-!JAJ if ( cris ) write(*,*) 'JAJ call_crtm ', isis_cads, tsim(4:5)
-!JAJ if ( iasi ) write(*,*) 'JAJ call crtm ', isis_cads, tsim_cads(1:3)
-!  write(*,*) 'JAJ nreal 4 ', nreal, data_s(41,n), tsim_cads(2) 
-!  write(*,199) 'JAJ nreal 5 ', (data_s(i,n),i=32,41) 
-!  write(*,199) 'JAJ nreal 5 ',data_s(32,n), data_s(39,n),tsim_cads(1),data_s(46,n),tsim_cads(2)
-!  199 format(1x,a12,1x,10f6.1)
 
 !  Transfer imager data to arrays for qc_irsnd
-             cluster_fraction = data_s(32:38,n)
-             cluster_bt(1,:) = data_s(39:45,n)
-             cluster_bt(2,:) = data_s(46:52,n)
-             chan_stdev = data_s(53:54,n)
-             model_bt = tsim_cads(1:2)
+
+             imager_cluster_fraction = data_s(32:38,n)
+             imager_cluster_bt(1,:) = data_s(39:45,n)
+             imager_cluster_bt(2,:) = data_s(46:52,n)
+             imager_chan_stdev = data_s(53:54,n)
+             imager_model_bt = tsim_cads(1:2)
            
              deallocate(data_s_cads,ich_cads,tsim_cads,emissivity_cads, &
                       chan_level_cads,ptau5_cads, ts_cads,emissivity_k_cads, &
                       temp_cads,wmix_cads, jacobian_cads) 
               call destroy_crtm
+
+!  Re-initialize the crtm for the current instrument
+
               call init_crtm(init_pass,iwrmype,mype,nchanl,nreal,isis,obstype,radmod)
-            endif
+
+            endif  ! end of section for colocated imagers,
 
 
           call call_crtm(obstype,dtime,data_s(:,n),nchanl,nreal,ich, &
@@ -1454,11 +1458,11 @@ contains
               end if
            end do
 
-           call qc_irsnd(nchanl,is,ndat,nsig,ich,sea,land,ice,snow,luse(n),goessndr,airs,                   &
-              cris,iasi,hirs,zsges,cenlat,cenlon,frac_sea,pangs,trop5,zasat,tzbgr,tsavg5,tbc,tb_obs,tbcnob,tnoise, &
-              wavenumber,ptau5,prsltmp,tvp,temp,wmix,emissivity,chan_level,emissivity_k,ts,tsim,                 &
-              data_s(ifrac_lnd,n),id_qc,aivals,errf,varinv,varinv_use,cld,cldp,zero_irjaco3_pole(n),cluster_fraction, &
-              cluster_bt, chan_stdev, model_bt)
+           call qc_irsnd(nchanl,is,ndat,nsig,ich,sea,land,ice,snow,luse(n),goessndr,airs,cris,iasi,      &
+              hirs,zsges,cenlat,cenlon,frac_sea,pangs,trop5,zasat,tzbgr,tsavg5,tbc,tb_obs,tbcnob,tnoise, &
+              wavenumber,ptau5,prsltmp,tvp,temp,wmix,emissivity,chan_level,emissivity_k,ts,tsim,         &
+              data_s(ifrac_lnd,n),id_qc,aivals,errf,varinv,varinv_use,cld,cldp,zero_irjaco3_pole(n),     &
+              imager_cluster_fraction, imager_cluster_bt, imager_chan_stdev, imager_model_bt)
 
 !  --------- MSU -------------------
 !       QC MSU data

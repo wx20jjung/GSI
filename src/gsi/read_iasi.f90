@@ -226,14 +226,14 @@ subroutine read_iasi(mype,val_iasi,ithin,isfcalc,rmesh,jsatid,gstime,&
   integer(i_kind),allocatable, dimension(:) :: bufr_chan_test
   character(len=20),dimension(2):: sensorlist
 
-! avhrr clouser information for CADS
-  integer(i_kind) :: sensorindex_avhrr, cads_info
-  integer(i_kind),dimension(7) :: avhrr_cluster_index
-  logical,dimension(7) :: avhrr_cluster_flag
-  real(r_kind),dimension(33,7) :: avhrr_info
-  real(r_kind),dimension(7)  :: avhrr_cluster_size
-  real(r_kind),dimension(2)  :: avhrr_mean, avhrr_std_dev
-  real(r_kind) :: avhrr_cluster_tot
+! Imager clouser information for CADS
+  integer(i_kind) :: sensorindex_imager, cads_info
+  integer(i_kind),dimension(7) :: imager_cluster_index
+  logical,dimension(7)         :: imager_cluster_flag
+  real(r_kind),dimension(33,7) :: imager_info
+  real(r_kind),dimension(7)    :: imager_cluster_size
+  real(r_kind),dimension(2)    :: imager_mean, imager_std_dev
+  real(r_kind)                 :: imager_cluster_tot
 
 ! Set standard parameters
   character(8),parameter:: fov_flag="crosstrk"
@@ -365,17 +365,17 @@ subroutine read_iasi(mype,val_iasi,ithin,isfcalc,rmesh,jsatid,gstime,&
   if ( sc(1)%sensor_id(1:4) == 'iasi' ) then
      sensorindex_iasi = 1
   else
-     write(6,*)'READ_IASI: sensorindex_iasi not set  NO IASI DATA USED'
+     write(6,*)'READ_IASI: ***ERROR*** sensorindex_iasi not set  NO IASI DATA USED'
      write(6,*)'READ_IASI: We are looking for ', sc(1)%sensor_id, '   TERMINATE PROGRAM EXECUTION'
      call stop2(71)
   end if
 
-!  find AVHRR sensorindex
-  sensorindex_avhrr = 0
+!  find imaer sensorindex
+  sensorindex_imager = 0
   if ( sc(2)%sensor_id(1:4) == 'avhr' ) then
-     sensorindex_avhrr = 2
+     sensorindex_imager = 2
   else
-     write(6,*)'READ_IASI: sensorindex_avhrr is not set  NO IASI DATA USED'
+     write(6,*)'READ_IASI: ***ERROR*** sensorindex_imager is not set  NO IASI DATA USED'
      write(6,*)'READ_IASI: We are looking for ', sc(2)%sensor_id, '   TERMINATE PROGRAM EXECUTION'
      call stop2(71)
   end if
@@ -782,7 +782,7 @@ subroutine read_iasi(mype,val_iasi,ithin,isfcalc,rmesh,jsatid,gstime,&
 
            crit1=crit1 + ten*float(iskip)
 
-!          If the surface channel exists (~960.0 cm-1) and the AVHRR cloud information is missing, use an
+!          If the surface channel exists (~960.0 cm-1) and the imager cloud information is missing, use an
 !          estimate of the surface temperature to determine if the profile may be clear.
            if (.not. cloud_info) then
               pred = tsavg*0.98_r_kind - temperature(sfc_channel_index)
@@ -799,73 +799,73 @@ subroutine read_iasi(mype,val_iasi,ithin,isfcalc,rmesh,jsatid,gstime,&
            endif
            if(.not. iuse)cycle read_loop
 
-!   Read the AVHRR cluster information for the Cloud and Aerosol Detection Software.
+!   Read the imager cluster information for the Cloud and Aerosol Detection Software.
 !   Only channels 4 and 5 are used.
-!   Convert from radiance to brightness temperature for mean and standard deviation used by CADS.
            if ( iasi_cads ) then
-             if ( cloud_info) then
-             call ufbseq(lnbufr,avhrr_info,33,7,iret,'IASIL1CS')
-           if (iret == 7 ) then  ! if AVHRR cluster info exists
-              avhrr_mean = zero
-              avhrr_std_dev = zero
-              avhrr_cluster_tot = zero
-              avhrr_cluster_flag = .TRUE.
-              avhrr_cluster_size = avhrr_info(3,1:7)
-              avhrr_cluster_size(:) = avhrr_cluster_size(:) / sum(avhrr_cluster_size(:))
-              avhrr_cluster_sort: do i=1,7
-                j = maxloc(avhrr_cluster_size,dim=1,mask=avhrr_cluster_flag)
-                avhrr_cluster_index(i) = j
-                avhrr_cluster_flag(j) = .FALSE.
-              end do avhrr_cluster_sort
+             call ufbseq(lnbufr,imager_info,33,7,iret,'IASIL1CS')
+             if (iret == 7 ) then  ! if imager cluster info exists
+               imager_mean = zero
+               imager_std_dev = zero
+               imager_cluster_tot = zero
+               imager_cluster_flag = .TRUE.
+               imager_cluster_size = imager_info(3,1:7)
+               imager_cluster_size(:) = imager_cluster_size(:) / sum(imager_cluster_size(:))
 
-!  AVHRR cluster sum
-              avhrr_cluster_info: do j=1,7
-                i = avhrr_cluster_index(j)
+!  Order clusters from largest (1) to smallest (7)
+               imager_cluster_sort: do i=1,7
+                 j = maxloc(imager_cluster_size,dim=1,mask=imager_cluster_flag)
+                 imager_cluster_index(i) = j
+                 imager_cluster_flag(j) = .FALSE.
+               end do imager_cluster_sort
 
-                data_all(maxinfo+i,itx) =  avhrr_cluster_size(i)                 ! AVHRR cluster fraction
-                avhrr_cluster_tot = avhrr_cluster_tot + avhrr_info(3,i)
+!   Convert from radiance to brightness temperature for mean and standard deviation used by CADS.
+!   Imager cluster info added to data_all array
 
-                iexponent = -(nint(avhrr_info(25,i))-5 )                        ! channel 4 cluster mean
-                avhrr_info(26,i) =  avhrr_info(26,i) * (ten ** iexponent)
+               imager_cluster_info: do j=1,7
+                 i = imager_cluster_index(j)
 
-                iexponent = -(nint(avhrr_info(27,i))-5 )                        ! channel 4 cluster std dev.
-                avhrr_info(28,i) =  avhrr_info(28,i) * (ten ** iexponent)
+                 data_all(maxinfo+j,itx) =  imager_cluster_size(i)                ! Imager cluster fraction
+                 imager_cluster_tot = imager_cluster_tot + imager_info(3,i)
 
-                avhrr_mean(1) = avhrr_mean(1) + avhrr_info(3,i) * avhrr_info(26,i)
-                call crtm_planck_temperature(sensorindex_avhrr,2,avhrr_info(26,i),data_all(maxinfo+7+i,itx))
-                data_all(maxinfo+7+i,itx) = max(data_all(maxinfo+7+i,itx),zero)
+                 iexponent = -(nint(imager_info(25,i))-5 )                        ! channel 4 radiance for each cluster.
+                 imager_info(26,i) =  imager_info(26,i) * (ten ** iexponent)
 
-                iexponent = -(nint(avhrr_info(30,i))-5 )                        ! channel 5 cluster mean
-                avhrr_info(31,i) =  avhrr_info(31,i) * (ten ** iexponent)
+                 iexponent = -(nint(imager_info(27,i))-5 )                        ! channel 4 radiance std dev for each cluster.
+                 imager_info(28,i) =  imager_info(28,i) * (ten ** iexponent)
 
-                iexponent = -(nint(avhrr_info(32,i))-5 )                        ! channel 5 cluster std dev.
-                avhrr_info(33,i) =  avhrr_info(33,i) * (ten ** iexponent)
+                 call crtm_planck_temperature(sensorindex_imager,2,imager_info(26,i),data_all(maxinfo+7+j,itx))
+                 data_all(maxinfo+7+j,itx) = max(data_all(maxinfo+7+j,itx),zero)
 
-                avhrr_mean(2) = avhrr_mean(2) + avhrr_info(3,i) * avhrr_info(31,i)
-                call crtm_planck_temperature(sensorindex_avhrr,3,avhrr_info(31,i),data_all(maxinfo+14+i,itx))
-                data_all(maxinfo+14+i,itx) = max(data_all(maxinfo+14+i,itx),zero)
+                 iexponent = -(nint(imager_info(30,i))-5 )                        ! channel 5 radiance for each cluster
+                 imager_info(31,i) =  imager_info(31,i) * (ten ** iexponent)
 
-              end do avhrr_cluster_info
+                 iexponent = -(nint(imager_info(32,i))-5 )                        ! channel 5 radiance std dev for each cluser.
+                 imager_info(33,i) =  imager_info(33,i) * (ten ** iexponent)
 
-              avhrr_mean(1) = sum(avhrr_cluster_size(:) * avhrr_info(26,:))
-              avhrr_std_dev(1) = sum(avhrr_cluster_size(:) * (avhrr_info(26,:)**2 + avhrr_info(28,:)**2)) - avhrr_mean(1)**2
-              avhrr_std_dev(1) = sqrt(max(avhrr_std_dev(1),zero))
-              call crtm_planck_temperature(sensorindex_avhrr,2,(avhrr_std_dev(1) + avhrr_mean(1)),avhrr_std_dev(1))
-              call crtm_planck_temperature(sensorindex_avhrr,2,avhrr_mean(1),avhrr_mean(1))
-              avhrr_std_dev(1) = avhrr_std_dev(1) - avhrr_mean(1)
-              data_all(maxinfo+22,itx) = avhrr_std_dev(1) 
+                 call crtm_planck_temperature(sensorindex_imager,3,imager_info(31,i),data_all(maxinfo+14+j,itx))
+                 data_all(maxinfo+14+j,itx) = max(data_all(maxinfo+14+j,itx),zero)
 
-              avhrr_mean(2) = sum(avhrr_cluster_size(:) * avhrr_info(31,:))
-              avhrr_std_dev(2) = sum(avhrr_cluster_size(:) * (avhrr_info(31,:)**2 + avhrr_info(33,:)**2)) - avhrr_mean(1)**2
-              avhrr_std_dev(2) = sqrt(max(avhrr_std_dev(1),zero))
-              call crtm_planck_temperature(sensorindex_avhrr,3,(avhrr_std_dev(2) + avhrr_mean(2)),avhrr_std_dev(2))
-              call crtm_planck_temperature(sensorindex_avhrr,3,avhrr_mean(2),avhrr_mean(2))
-              avhrr_std_dev(2) = avhrr_std_dev(2) - avhrr_mean(2)
-              data_all(maxinfo+23,itx) = avhrr_std_dev(2) 
+               end do imager_cluster_info
 
-           endif   ! AVHRR cluster info exists.
+! Compute cluster averages for each channel
 
-             else  ! AVHRR cluster info is missing.  Set everything to zero
+               imager_mean(1) = sum(imager_cluster_size(:) * imager_info(26,:))      ! Channel 4 radiance cluster average 
+               imager_std_dev(1) = sum(imager_cluster_size(:) * (imager_info(26,:)**2 + imager_info(28,:)**2)) - imager_mean(1)**2
+               imager_std_dev(1) = sqrt(max(imager_std_dev(1),zero))                 ! Channel 4 radiance RMSE
+               call crtm_planck_temperature(sensorindex_imager,2,(imager_std_dev(1) + imager_mean(1)),imager_std_dev(1))
+               call crtm_planck_temperature(sensorindex_imager,2,imager_mean(1),imager_mean(1))    ! Channel 4 average BT
+               imager_std_dev(1) = imager_std_dev(1) - imager_mean(1)                ! Channel 4 BT std dev
+               data_all(maxinfo+22,itx) = imager_std_dev(1) 
+
+               imager_mean(2) = sum(imager_cluster_size(:) * imager_info(31,:))      ! Channel 5 radiance cluster average
+               imager_std_dev(2) = sum(imager_cluster_size(:) * (imager_info(31,:)**2 + imager_info(33,:)**2)) - imager_mean(1)**2
+               imager_std_dev(2) = sqrt(max(imager_std_dev(1),zero))                 ! Channel 5 radiance RMSE
+               call crtm_planck_temperature(sensorindex_imager,3,(imager_std_dev(2) + imager_mean(2)),imager_std_dev(2))
+               call crtm_planck_temperature(sensorindex_imager,3,imager_mean(2),imager_mean(2))     ! Channel 5 average BT
+               imager_std_dev(2) = imager_std_dev(2) - imager_mean(2)                ! Channel 5 BT std dev
+               data_all(maxinfo+23,itx) = imager_std_dev(2) 
+
+             else  ! Imager cluster information is missing.  Set everything to zero
                data_all(maxinfo+1 : maxinfo+25,itx) = zero
              endif
            endif ! iasi_cads = .true.
@@ -916,8 +916,8 @@ subroutine read_iasi(mype,val_iasi,ithin,isfcalc,rmesh,jsatid,gstime,&
            data_all(31,itx)= dlat_earth_deg            ! earth relative latitude (degrees)
 
            if(dval_use)then
-              data_all(32,itx)= val_iasi
-              data_all(33,itx)= itt
+              data_all(32+cads_info,itx)= val_iasi
+              data_all(33+cads_info,itx)= itt
            end if
 
            if ( nst_gsi > 0 ) then
