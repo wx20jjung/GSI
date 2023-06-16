@@ -2437,8 +2437,6 @@ subroutine qc_irsnd(nchanl,is,ndat,nsig,ich,sea,land,ice,snow,luse,goessndr,airs
       end do 
       if ( tb_obs_10 > zero .and. tb_obs_12 > zero ) then
         tb_obs_diff = tb_obs_10 - tb_obs_12
-!        if (cris .and. varinv(219) /= zero) write(*,*) 'JAJ cris diff ', tb_obs_diff
-!        if (iasi .and. varinv(211) /= zero) write(*,*) 'JAJ iasi diff ', tb_obs_diff
         if ( tb_obs_diff > 2.20_r_kind ) then  ! Assume a cloud exists
           cldp = prsltmp(1) * r10    ! Assume near surface cloud
           cloudp = one               ! Assume overcast cloud

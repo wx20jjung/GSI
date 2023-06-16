@@ -311,7 +311,6 @@ subroutine cloud_aerosol_detection( I__Sensor_ID, I__Num_Chans, I__Chan_ID, Z__L
   N__Num_Imager_Chans = S__CADS_Setup_Cloud(I__Sensor_ID) % N__Num_Imager_Chans
   N__Num_Imager_Clusters = S__CADS_Setup_Cloud(I__Sensor_ID) % N__Num_Imager_Clusters
 
-!  if ( I__Sensor_ID == 16 ) write(*,*) 'JAJ model_imager cloud', Z__BT_Model_Imager(1:2)
   CALL CADS_Detect_Cloud( I__Sensor_ID, I__Num_Chans, I__Chan_ID,I__Min_Level, I__Max_Level, N__Num_Imager_Chans, &
                  K__Chan_ID_Imager, N__Num_Imager_Clusters, I__Flag_Cloud, Z__BT_Obser, Z__BT_Model, Z__Chan_Height, &
                  Z__Cluster_Fraction, Z__BT_in_Cluster, Z__BT_Overall_SDev, Z__BT_Model_Imager, Z__Cloud_Level )
@@ -492,9 +491,6 @@ SUBROUTINE CADS_Setup_Cloud
         2355, 2363, 2370, 2371, 2377 /)
 
       N__GradChkInterval(:) = 0
-      N__GradChkInterval(1:N__Num_Bands) = (/ 5,5,5,5,5 /)
-
-      N__Window_Width(:) = 0
       N__GradChkInterval(1:N__Num_Bands) = (/ 5,5,5,5,5 /)
 
       N__Window_Width(:) = 0
@@ -721,9 +717,6 @@ SUBROUTINE CADS_Setup_Cloud
       N__Window_Bounds(1,2) = 549
 
       R__BT_Threshold(:) = 0.0_r_kind
-      R__BT_Threshold(1:N__Num_Bands) = (/ 0.3_r_kind, 0.5_r_kind, 0.5_r_kind, 0.5_r_kind, 0.5_r_kind /)
-
-      R__Grad_Threshold(:) = 0.0_r_kind
       R__BT_Threshold(1:N__Num_Bands) = (/ 0.5_r_kind, 0.5_r_kind, 0.5_r_kind, 0.5_r_kind, 0.5_r_kind /)
 
       R__Grad_Threshold(:) = 0.0_r_kind
@@ -1440,7 +1433,8 @@ SUBROUTINE CADS_Detect_Cloud_Imager( K__Sensor,  K__Nchans,  K__Chanid, K__Nclus
 !* Additional local variables
   INTEGER(i_kind) :: I, J, IK, I_Temp_Flag, ICOUNT
   INTEGER(i_kind) :: I__Chan_Index(K__Nchans)
-  REAL(r_kind) :: Z__Wsqdev, Z__Sqdev(K__Nclust), Z__Intercluster
+  REAL(r_kind) :: Z__Wsqdev, Z__Intercluster
+  real(r_kind),dimension(K__Nclust) :: Z__Sqdev
 
 
 
@@ -1491,6 +1485,7 @@ SUBROUTINE CADS_Detect_Cloud_Imager( K__Sensor,  K__Nchans,  K__Chanid, K__Nclus
         Z__Sqdev(J) = Z__Sqdev(J) + (P__Cl_Mean(I,J)-P__FG_BT(I))**2
       ENDDO
     ENDDO
+
 !      standard deviation falls below given threshold on at least one
 !      channel.
 
@@ -1500,7 +1495,6 @@ SUBROUTINE CADS_Detect_Cloud_Imager( K__Sensor,  K__Nchans,  K__Chanid, K__Nclus
       IF (P__Ov_Stddev(I)<Z__Stddev_Threshold(I__Chan_Index(I))) I_Temp_Flag=0
     ENDDO
 
-!    if (I_Temp_Flag==1) write(*,*) 'JAJ first guess departure fail'
     IF (I_Temp_Flag==1) K__Cloud_Flag=K__Cloud_Flag+4
 
 
@@ -1520,7 +1514,6 @@ SUBROUTINE CADS_Detect_Cloud_Imager( K__Sensor,  K__Nchans,  K__Chanid, K__Nclus
         ENDDO
         IF (Z__Intercluster>Z__Sqdev(J) .OR. Z__Intercluster>Z__Sqdev(IK)) THEN
           K__Cloud_Flag=K__Cloud_Flag+2
-!   write(*,*) 'JAJ consistency check fail', K__Cloud_Flag
           Exit Consistency_Check
         ENDIF
       ENDDO
@@ -1533,9 +1526,6 @@ SUBROUTINE CADS_Detect_Cloud_Imager( K__Sensor,  K__Nchans,  K__Chanid, K__Nclus
 
     Z__Wsqdev = SUM(P__Cl_Fraction(:)*Z__Sqdev(:))
     IF (Z__Wsqdev>=Z__FG_Departure_Threshold) K__Cloud_Flag=K__Cloud_Flag+1
-!    IF (Z__Wsqdev>=Z__FG_Departure_Threshold) write(*,*) 'JAJ first guess departure fail'
-!  write(*,'(1x,a9,7f9.2)') 'JAJ sqdev ',(Z__Sqdev(i) * P__Cl_Fraction(i),i=1,7)
-!  write(*,'(1x,a9,3f8.2)') 'JAJ stdev ', P__Ov_Stddev(1:2), Z__Wsqdev
 
   ENDIF   ! L__Do_Imager_Cloud_Detection
 

@@ -956,6 +956,7 @@ contains
         else 
 
 !  If not allsky
+
 !  Generate model derived imager values for IASI or CrIS for CADS
 
           if ((iasi_cads .and. iasi) .or. (cris_cads .and. cris)) then
@@ -1001,7 +1002,7 @@ contains
              imager_cluster_bt(1,:) = data_s(39:45,n)
              imager_cluster_bt(2,:) = data_s(46:52,n)
              imager_chan_stdev = data_s(53:54,n)
-             imager_model_bt = tsim_cads(1:2)
+             imager_model_bt = tsim_cads(nchanl_cads-1:nchanl_cads)
            
              deallocate(data_s_cads,ich_cads,tsim_cads,emissivity_cads, &
                       chan_level_cads,ptau5_cads, ts_cads,emissivity_k_cads, &
@@ -1009,7 +1010,6 @@ contains
               call destroy_crtm
 
 !  Re-initialize the crtm for the current instrument
-
               call init_crtm(init_pass,iwrmype,mype,nchanl,nreal,isis,obstype,radmod)
 
             endif  ! end of section for colocated imagers,

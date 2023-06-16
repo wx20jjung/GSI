@@ -198,7 +198,7 @@ subroutine read_cris(mype,val_cris,ithin,isfcalc,rmesh,jsatid,gstime,&
    logical,dimension(7)         :: imager_cluster_flag
    real(r_kind),dimension(83,7) :: imager_info
    real(r_kind),dimension(7)    :: imager_cluster_size
-   real(r_kind),dimension(2)    :: imager_mean, imager_std_dev
+   real(r_kind),dimension(2)    :: imager_mean, imager_std_dev, imager_conversion
    real(r_kind)                 :: imager_cluster_tot
 
 ! bufr error codes 
@@ -741,15 +741,14 @@ subroutine read_cris(mype,val_cris,ithin,isfcalc,rmesh,jsatid,gstime,&
               if ( cloud_properties(1) < one ) then     !Assume clear
                  clear = .true.
               else
-!                 cycle read_loop    !REMOVE JAJ
                  pred1 = cloud_properties(2) *7.0_r_kind / r1000    ! Assume a lapse rate to convert hgt to delta TB.
                  radiance = allchan(2,sfc_channel_index) * r1000    ! Conversion from W to mW
                  call crtm_planck_temperature(sensorindex_cris,sfc_channel,radiance,temperature(sfc_channel_index))  ! radiance to BT calculation
                  pred2 = tsavg *0.98_r_kind - temperature(sfc_channel_index)
                  pred = max(pred1,pred2)    ! use the largest of lapse rate (pred1) or sfc channel-surface difference (pred2)
+                 pred = one 
               endif
            else
-!             cycle read_loop  !REMOVE JAJ
 
 !          If cloud_properties are missing from BUFR, use proxy of warmest fov. 
 !          the surface channel is fixed and set earlier in the code (501).
@@ -835,6 +834,8 @@ subroutine read_cris(mype,val_cris,ithin,isfcalc,rmesh,jsatid,gstime,&
                imager_cluster_flag = .TRUE.
                imager_cluster_size = imager_info(3,1:7)
                imager_cluster_size(:) = imager_cluster_size(:) / sum(imager_cluster_size(:))
+               imager_conversion(1) = one / (sc(sensorindex_imager)%wavenumber(4) **2) * 1.0e6_r_kind
+               imager_conversion(2) = one / (sc(sensorindex_imager)%wavenumber(5) **2) * 1.0e6_r_kind
 
 !  Order clusters from largest (1) to smallest (7)
                imager_cluster_sort:  do i=1,7
@@ -853,19 +854,19 @@ subroutine read_cris(mype,val_cris,ithin,isfcalc,rmesh,jsatid,gstime,&
                  imager_cluster_tot = imager_cluster_tot + imager_info(3,i)
 
                  iexponent = -(nint(imager_info(75,i))-5 )                        ! channel 15 radiance for each cluster
-                 imager_info(76,i) =  imager_info(76,i) * (ten ** iexponent)
+                 imager_info(76,i) =  imager_info(76,i) * (ten ** iexponent) * imager_conversion(1)
  
                  iexponent = -(nint(imager_info(77,i))-5 )                        ! channel 15 radiance std dev for each cluster.
-                 imager_info(78,i) =  imager_info(78,i) * (ten ** iexponent)
-
+                 imager_info(78,i) =  imager_info(78,i) * (ten ** iexponent) * imager_conversion(1)
+  
                  call crtm_planck_temperature(sensorindex_imager,4,imager_info(76,i),data_all(maxinfo+7+j,itx))
                  data_all(maxinfo+7+j,itx) = max(data_all(maxinfo+7+j,itx),zero)
 
                  iexponent = -(nint(imager_info(80,i))-5 )                        ! channel 16 radiance for each cluster
-                 imager_info(81,i) =  imager_info(81,i) * (ten ** iexponent)
+                 imager_info(81,i) =  imager_info(81,i) * (ten ** iexponent) * imager_conversion(2)
 
                  iexponent = -(nint(imager_info(82,i))-5 )                        ! channel 16 radiance std dev for each cluster.
-                 imager_info(83,i) =  imager_info(83,i) * (ten ** iexponent)
+                 imager_info(83,i) =  imager_info(83,i) * (ten ** iexponent) * imager_conversion(2)
 
                  call crtm_planck_temperature(sensorindex_imager,5,imager_info(81,i),data_all(maxinfo+14+j,itx))
                  data_all(maxinfo+14+j,itx) = max(data_all(maxinfo+14+j,itx),zero)
