@@ -662,6 +662,20 @@ else if (channelinfo(1)%sensor_id(1:4) == 'cris' .AND. isis(1:4) == 'cris') then
    error_status = crtm_channelinfo_subset(channelinfo(1), &
         channel_subset = nuchan(subset_start:subset_end))
 
+else if (channelinfo(1)%sensor_id(1:7) == 'iasi-ng' .AND. isis(1:7) == 'iasi-ng') then
+   sensorindex = 1
+   subset_start = 0
+   subset_end = 0
+   do k=1, jpch_rad
+     if (isis == nusis(k)) then
+       if (subset_start == 0) subset_start = k
+       subset_end = k
+     endif
+   end do
+
+   error_status = crtm_channelinfo_subset(channelinfo(1), &
+        channel_subset = nuchan(subset_start:subset_end))
+
 else if (channelinfo(1)%sensor_id(1:4) == 'iasi' .AND. isis(1:4) == 'iasi') then
    sensorindex = 1
    subset_start = 0
