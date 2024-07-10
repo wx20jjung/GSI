@@ -93,9 +93,9 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
   integer(i_kind)  ,intent(in   ) :: mype_sub
   integer(i_kind)  ,intent(in   ) :: npe_sub
   integer(i_kind)  ,intent(in   ) :: mpi_comm_sub  
-  character(len=*), intent(in   ) :: infile
-  character(len=10),intent(in   ) :: jsatid
-  character(len=*), intent(in   ) :: obstype
+  character(len=*), intent(in   ) :: infile, obstype, jsatid
+!  character(len=*), intent(in   ) :: jsatid
+!  character(len=*), intent(in   ) :: obstype
   character(len=20),intent(in   ) :: sis
   real(r_kind)     ,intent(in   ) :: twind
   real(r_kind)     ,intent(inout) :: val_iasing
@@ -160,7 +160,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
   logical          :: outside,iuse,assim,valid
   logical          :: iasing,quiet,cloud_info
 
-  integer(i_kind)  :: ifov, instr, iscn, ioff, sensorindex_iasing
+  integer(i_kind)  :: ifov, ifor, istep, ipos, instr, iscn, ioff, sensorindex_iasing
   integer(i_kind)  :: i, j, l, iskip, ifovn, bad_line, ksatid, kidsat, llll
   integer(i_kind)  :: nreal, isflg
   integer(i_kind)  :: itx, k, nele, itt, n
@@ -188,7 +188,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
 ! Set standard parameters
   character(8),parameter:: fov_flag="crosstrk"
-  integer(i_kind),parameter:: sfc_channel=1271
+  integer(i_kind),parameter:: sfc_channel=2539
   integer(i_kind),parameter:: ichan=-999         ! fov-based surface code is not channel specific for iasing 
   real(r_kind),parameter:: expansion=one         ! exansion factor for fov-based surface code.
                                                  ! use one for ir sensors.
@@ -226,7 +226,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
     call gsi_nstcoupler_skindepth(obstype, zob)         ! get penetration depth (zob) for the obstype
   endif
 
-  if(jsatid == 'metop-sg-a1')kidsat=24
+  if (jsatid == 'metop-sg-a1') kidsat=24
  
 !  write(6,*)'READ_IASI-NG: mype, mype_root,mype_sub, npe_sub,mpi_comm_sub', &
 !          mype, mype_root,mype_sub,mpi_comm_sub
@@ -244,8 +244,8 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
      if (trim(nusis(i))==trim(sis)) then
         ioff = min(ioff,i)   ! iasi-ng offset
         if (subset_start == 0) then
-          step  = radstep(i)
-          start = radstart(i)
+!JAJ          step  = radstep(i)
+!JAJ          start = radstart(i)
           if (radedge1(i)/=-1 .and. radedge2(i)/=-1) then
              radedge_min=radedge1(i)
              radedge_max=radedge2(i)
@@ -307,7 +307,8 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
 !  find IASI-NG sensorindex
   sensorindex_iasing = 0
-  if ( sc(1)%sensor_id(1:7) == 'iasi-ng' ) then
+!JAJ  if ( sc(1)%sensor_id(1:7) == 'iasi-ng' ) then
+  if ( sc(1)%sensor_id == '999' ) then
      sensorindex_iasing = 1
   else
      write(6,*)'READ_IASI-NG: ***ERROR*** sensorindex_iasi-ng not set  NO IASI-NG DATA USED'
@@ -317,6 +318,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
 !  find imager sensorindex
   sensorindex_imager = 0
+  iasing_cads = .true.
   if ( iasing_cads .and. imager_coeff ) then
      if ( sc(2)%sensor_id(1:7) == 'metimag' ) then
         sensorindex_imager = 2
@@ -459,20 +461,20 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
            ifov = nint(linele(1))               ! field of view
 
-!          IASI-NG fov ranges from 1 to 120.   Current angle dependent bias
+!          IASI-NG fov ranges from 1 to 112.   Current angle dependent bias
 !          correction has a maximum of 90 scan positions.   Geometry
-!          of IASI-NG scan allows us to remap 1-120 to 1-60.   Variable
+!          of IASI-NG scan allows us to remap 1-112 to 1-56.   Variable
 !          ifovn below contains the remapped IASI-NG fov.  This value is
 !          passed on to and used in setuprad
-           ifovn = (ifov-1)/2 + 1
+!JAJ           ifovn = (ifov-1)/2 + 1
 
 !          Remove data on edges
-           if (.not. use_edges .and. &
-             (ifovn < radedge_min .OR. ifovn > radedge_max )) cycle read_loop
+!JAJ           if (.not. use_edges .and. &
+!JAJ             (ifovn < radedge_min .OR. ifovn > radedge_max )) cycle read_loop
 
 !          Check field of view (FOVN) and satellite zenith angle (SAZA)
            iscn = nint(linele(2))               ! scan line
-           if( ifov <= 0 .or. ifov > 120) then
+           if( ifov <= 0 .or. ifov > 16) then
               write(6,*)'READ_IASI-NG:  ### ERROR IN READING ', senname, ' BUFR DATA:', &
                  ' STRANGE OBS INFO(FOVN,SLNM):', ifov, iscn
               cycle read_loop
@@ -480,7 +482,6 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
            call ufbint(lnbufr,allspot,13,1,iret,allspotlist)
            if(iret /= 1) cycle read_loop
-
 
 !          Check observing position
            dlat_earth = allspot(8)   ! latitude
@@ -583,21 +584,39 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
                  ' STRANGE OBS INFO(FOVN,SLNM,SAZA,BEARAZ):', ifov, iscn, allspot(10),allspot(11)
               cycle read_loop
            endif
-           if ( ifov <= 60 ) sat_zenang = -sat_zenang
+!  Remove this code when the field-of-view spans 1-224 JAJ.
+           ifov = ( 59 - nint(sat_zenang)) / 2
+           ifov = min( 28, max(1,ifov))
 
-!          Compare IASI-NG satellite scan angle and zenith angle
-           piece = -step_adjust
-           if ( mod(ifovn,2) == 1) piece = step_adjust
-           lza = ((start + real((ifov-1)/4,r_kind)*step) + piece)*deg2rad
-           sat_height_ratio = (earth_radius + linele(4))/earth_radius
-           lzaest = asin(sat_height_ratio*sin(lza))*rad2deg
-           if (abs(sat_zenang - lzaest) > one) then
-              write(6,*)' READ_IASI-NG WARNING uncertainty in lza ', &
-                 lza*rad2deg,sat_zenang,sis,ifov,start,step,allspot(11),allspot(12),allspot(13)
-              bad_line = iscn
-              cycle read_loop
-           endif
+!  There are 16 fields-of-view within each field-of-reagard, a 4X4 matrix.
+!          |  1   2   3   4 |
+!          |  5   6   7   8 |
+!          |  9  10  11  12 |
+!          | 13  14  15  16 |
 
+!  There are 14 fields-of-regard in each scan line. So, there are 56 unique positions in the scan line.
+!  To determine the scan position:
+           ifor = ((ifov-1) / 16) + 1               ! Determine field-of-regard 
+           istep = ifov - (ifor * 16)               ! Determine field-of-view within field-of-regard
+           ipos = (ifor * 4) + mod(istep,4) + 1     ! Determine position of field-of-view within scan line
+
+! Remove data on edges
+           if (.not. use_edges .and. &
+             (ipos < radedge_min .or. ipos > radedge_max)) cycle read_loop
+
+           if ( ipos <= 28 ) sat_zenang = - sat_zenang
+
+!JAJ to be removed
+! Estimate scan angle and compare to zenith angle
+!JAJ           lza = ((start + real(ipos)* step) * deg2rad
+!JAJ           sat_height_ratio = (earth_radius + linele(4)) / earth_radius
+!JAJ           lzaest = asin(sat_height_ratio * sin(lza)) * rad2deg
+!JAJ           if (abs(sat_zenang - lzaest) > one) then
+!JAJ              write(6,*)' READ_IASI-NG WARNING uncertainty in lza ', &
+!JAJ                 lza*rad2deg,sat_zenang,sis,ifov,start,step,allspot(11),allspot(12),allspot(13)
+!JAJ              bad_line = iscn
+!JAJ              cycle read_loop
+!JAJ           endif
 
 !          "Score" observation.  We use this information to identify "best" obs
 !          Locate the observation on the analysis grid.  Get sst and land/sea/ice
@@ -708,7 +727,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
              cycle read_loop
            endif
 
-!$omp parallel do schedule(dynamic,1) private(i,sc_chan,bufr_chan,radiance)
+!JAJ  !$omp parallel do schedule(dynamic,1) private(i,sc_chan,bufr_chan,radiance)
            channel_loop: do i=1,satinfo_nchan
               bufr_chan = bufr_index(i)
               if (bufr_chan > 0 ) then
@@ -717,6 +736,12 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
                   radiance = allchan(2,bufr_chan)*scalef(bufr_chan)
                   sc_chan = sc_index(i)
                   call crtm_planck_temperature(sensorindex_iasing,sc_chan,radiance,temperature(bufr_chan))
+!JAJ if (( temperature(bufr_chan) > 220.0_r_kind .and. temperature(bufr_chan) < 300.0_r_kind) .and. &
+!JAJ      (bufr_chan > 500 .and. bufr_chan < 5000)) then
+!JAJ   write(*,'(a10,1x,i6,1x,e15.3,1x,f7.2,1x,f10.5,1x,f10.5)')  'JAJ value ',bufr_chan,allchan(2,bufr_chan),temperature(bufr_chan), &
+!JAJ                  dlat_earth_deg, dlon_earth_deg
+!JAJ endif
+
                 else
                    temperature(bufr_chan) = tbmin
                 endif
@@ -730,6 +755,8 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               bufr_chan = bufr_index(i)
               if(temperature(bufr_chan) <= tbmin .or. temperature(bufr_chan) > tbmax ) then
                  temperature(bufr_chan) = min(tbmax,max(tbmin,temperature(bufr_chan)))
+ !write(*,'(a10,1x,i6,1x,e7.3,1x,f9.5,1x,f9.5)')  'JAJ bad value ',bufr_chan,allchan(2,bufr_chan),scalef(bufr_chan)
+! write(*,'(a14,1x,i6,1x,e12.3,1x,f10.5,1x,f10.5)')  'JAJ bad value ',bufr_chan,allchan(2,bufr_chan),dlat_earth_deg, dlon_earth_deg
                  if(iuse_rad(ioff+i) >= 0)iskip = iskip + 1
               endif
            end do skip_loop
@@ -851,8 +878,9 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
            data_all(4,itx) = dlat                      ! grid relative latitude
            data_all(5,itx) = sat_zenang*deg2rad        ! satellite zenith angle (rad)
            data_all(6,itx) = allspot(11)               ! satellite azimuth angle (deg)
-           data_all(7,itx) = lza                       ! look angle (rad)
-           data_all(8,itx) = ifovn                     ! fov number
+!JAJ           data_all(7,itx) = lza                       ! look angle (rad)
+           data_all(7,itx) = sat_zenang*deg2rad                       ! look angle (rad)
+           data_all(8,itx) = ifov                      ! fov number
            data_all(9,itx) = allspot(12)               ! solar zenith angle (deg)
            data_all(10,itx)= allspot(13)               ! solar azimuth angle (deg)
            data_all(11,itx) = sfcpct(0)                ! sea percentage of

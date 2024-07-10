@@ -522,7 +522,7 @@ contains
   ssmis_img  = obstype == 'ssmis_img'
   ssmis_env  = obstype == 'ssmis_env'
   iasi       = obstype == 'iasi'
-  iasing    = obstype == 'iasi-ng'
+  iasing     = obstype == 'iasi-ng'
   cris       = obstype == 'cris' .or. obstype == 'cris-fsr'
   seviri     = obstype == 'seviri'
   atms       = obstype == 'atms'

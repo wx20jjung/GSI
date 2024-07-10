@@ -768,7 +768,8 @@ contains
        end select 
 
        if ( .not. diag_rad .and. iuse_rad(j) < 0 .and. iextra_det(j) < 0 .and. &
-          ( nusis(j)(1:4) == 'cris' .or. nusis(j)(1:4) == 'iasi' .or. nusis(j)(1:4) == 'airs')) cycle
+          ( nusis(j)(1:4) == 'cris' .or. nusis(j)(1:7) == 'iasi-ng' .or. nusis(j)(1:4) == 'iasi'  &
+            .or. nusis(j)(1:4) == 'airs')) cycle
 
        if(iuse_rad(j) == 4 .or. iuse_rad(j) == 2) air_rad(j)=zero
        if(iuse_rad(j) == 4 .or. iuse_rad(j) == 3) ang_rad(j)=zero
@@ -805,10 +806,10 @@ contains
     end do
     close(lunin)
 100 format(a1,a120)
-110 format(i4,1x,a20,' chan= ',i4,  &
+110 format(i4,1x,a20,' chan= ',i5,  &
           ' var= ',f7.3,' varch_cld=',f7.3,' use= ',i2,' ermax= ',F7.3, &
           ' b_rad= ',F7.2,' pg_rad=',F7.2,' icld_det=',I2,' icloud=',I2,' iaeros=',I2)
-111 format(i4,1x,a20,' chan= ',i4,  &
+111 format(i4,1x,a20,' chan= ',i5,  &
           ' var= ',f7.3,' varch_cld=',f7.3,' use= ',i2,' ermax= ',F7.3, &
           ' b_rad= ',F7.2,' pg_rad=',F7.2,' iextra_det=',I2, 'icloud=',I2,'iaeros=', I2)
 
@@ -869,7 +870,7 @@ contains
 !            The second part of the if statement keeps from printing them.
              if ( .not. cfound ) then
                 if ((diag_rad .and. mype ==0) .or. &
-                   (.not. diag_rad .and. isis(1:4)/='airs' .and. isis(1:4) /= 'cris' .and. isis(1:4) /= 'iasi')) &
+                   (.not. diag_rad .and. isis(1:4)/='airs' .and. isis(1:4) /= 'cris' .and. isis(1:7) /= 'iasi-ng' .and. isis(1:4) /= 'iasi')) &
                    write(6,*) '***WARNING instrument/channel ',isis,ichan,'found in satbias_pc file but not found in satinfo'
              endif
 
@@ -1112,7 +1113,7 @@ contains
 !         The second part of the if statement keeps from printing them.
           if ( .not. cfound ) then
              if ((diag_rad .and. mype ==0) .or. &
-                (.not. diag_rad .and. isis(1:4)/='airs' .and. isis(1:4) /= 'cris' .and. isis(1:4) /= 'iasi')) &
+                (.not. diag_rad .and. isis(1:4)/='airs' .and. isis(1:4) /= 'cris' .and. isis(1:7) /= 'iasi-ng' .and. isis(1:4) /= 'iasi')) &
                 write(6,*) '***WARNING instrument/channel ',isis,ichan,'found in satbias_in file but not found in satinfo'
           endif
 

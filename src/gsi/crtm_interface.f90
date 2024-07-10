@@ -662,7 +662,8 @@ else if (channelinfo(1)%sensor_id(1:4) == 'cris' .AND. isis(1:4) == 'cris') then
    error_status = crtm_channelinfo_subset(channelinfo(1), &
         channel_subset = nuchan(subset_start:subset_end))
 
-else if (channelinfo(1)%sensor_id(1:7) == 'iasi-ng' .AND. isis(1:7) == 'iasi-ng') then
+!JAJ the correct one    else if (channelinfo(1)%sensor_id(1:7) == 'iasi-ng' .AND. isis(1:7) == 'iasi-ng') then
+else if (channelinfo(1)%sensor_id(1:3) == '999' .AND. isis(1:7) == 'iasi-ng') then
    sensorindex = 1
    subset_start = 0
    subset_end = 0

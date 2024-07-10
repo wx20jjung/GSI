@@ -2335,9 +2335,9 @@ subroutine qc_irsnd(nchanl,is,ndat,nsig,ich,sea,land,ice,snow,luse,goessndr,airs
       boundary_layer_pres = nint(0.8_r_kind*prsltmp(1))  !  boundary layer set to be 80% of surface pressure
       tropopause_height = nint(trop5)
       imager_chans = (/18,19/)                  ! imager channel numbers (from satinfo)
-      isurface_chan = 2447                      ! surface channel
-      ichan_10_micron = 2447                    ! ~10.7 micron channel for low level cloud test
-      ichan_12_micron = 1560                    ! ~12.0 micron channel for low level cloud test
+      isurface_chan = 2539                      ! surface channel
+      ichan_10_micron = 2343                    ! ~10.7 micron channel for low level cloud test
+      ichan_12_micron = 1509                    ! ~12.0 micron channel for low level cloud test
       
       call cloud_aerosol_detection( I_Sensor_ID, nchanl, chan_array, &
              tropopause_height, boundary_layer_pres, tb_bc, tsim, chan_level, imager_chans, cluster_fraction, &
@@ -2434,6 +2434,7 @@ subroutine qc_irsnd(nchanl,is,ndat,nsig,ich,sea,land,ice,snow,luse,goessndr,airs
 ! default compute cloud stats, emc_legacy_cloud_detect 
   else  
     if ( lcloud > 0 ) then
+!JAJ    if ( lcloud > 0 .and. .not. iasing ) then
 
       do i=1,nchanl
 !       reject channels with iuse_rad(j)=-1 when they are peaking below the cloud
@@ -4258,7 +4259,7 @@ subroutine qc_goesimg(nchanl,is,ndat,nsig,ich,dplat,sea,land,ice,snow,luse,   &
   real(r_kind),dimension(nsig,nchanl),intent(in ) :: temp,wmix
   real(r_kind),dimension(nchanl),   intent(in   ) :: tb_obs,tb_obs_sdv,tbc,tnoise,emissivity_k,ts
   real(r_kind),dimension(nchanl),   intent(inout) :: errf,varinv
-  character(10),                    intent(in   ) :: dplat
+  character(len=*),                 intent(in   ) :: dplat
 
 ! Declare local parameters
 
