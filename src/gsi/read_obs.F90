@@ -929,7 +929,7 @@ subroutine read_obs(ndata,mype)
                amsre  .or. ssmis      .or. obstype == 'ssmi'      .or.  &
                obstype == 'ssu'       .or. obstype == 'atms'      .or.  &
                obstype == 'cris'      .or. obstype == 'cris-fsr'  .or.  &
-               obstype == 'amsr2'     .or. obstype == 'viirs-m'   .or.  &
+               obstype == 'amsr2'     .or. obstype == 'viirs-m'   .or.  obstype == 'metimage' .or. &
                obstype == 'gmi'       .or. obstype == 'saphir'   ) then
           ditype(i) = 'rad'
        else if (is_extOzone(dfile(i),obstype,dplat(i))) then
@@ -1037,6 +1037,8 @@ subroutine read_obs(ndata,mype)
              else if(avhrr)then
                 parallel_read(i)= .true.
              else if(obstype == 'viirs-m' )then
+                parallel_read(i)= .true.
+             else if(obstype == 'metimage' )then
                 parallel_read(i)= .true.
              else if(amsre)then
                 parallel_read(i)= .true.
