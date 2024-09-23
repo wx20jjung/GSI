@@ -562,7 +562,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
            endif
 
 !          Increment nread counter by satinfo_nchan
-!JAJ           nread = nread + satinfo_nchan
+           nread = nread + satinfo_nchan
 
            crit0 = 0.01_r_kind
            if( llll > 1 ) crit0 = crit0 + r100 * real(llll,r_kind)
@@ -726,22 +726,21 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
 !JAJ  !$omp parallel do schedule(dynamic,1) private(i,sc_chan,bufr_chan,radiance)
            channel_loop: do i=1,satinfo_nchan
+              sc_chan = sc_index(i)
+              if (bufr_index(i) == 0 ) cycle channel_loop
               bufr_chan = bufr_index(i)
-              if (bufr_chan > 0 ) then
 !             check that channel number is within reason
-                if (( allchan(2,bufr_chan) > zero .and. allchan(2,bufr_chan) < 99999._r_kind)) then  ! radiance bounds
-                  radiance = allchan(2,bufr_chan)*scalef(bufr_chan)
-                  sc_chan = sc_index(i)
-                  call crtm_planck_temperature(sensorindex_iasing,sc_chan,radiance,temperature(bufr_chan))
+              if (( allchan(2,bufr_chan) > zero .and. allchan(2,bufr_chan) < 99999._r_kind)) then  ! radiance bounds
+                radiance = allchan(2,bufr_chan)*scalef(bufr_chan)
+                call crtm_planck_temperature(sensorindex_iasing,sc_chan,radiance,temperature(bufr_chan))
 !JAJ if (( temperature(bufr_chan) > 220.0_r_kind .and. temperature(bufr_chan) < 300.0_r_kind) .and. &
 !JAJ      (bufr_chan > 500 .and. bufr_chan < 5000)) then
 !JAJ   write(*,'(a10,1x,i6,1x,e15.3,1x,f7.2,1x,f10.5,1x,f10.5)')  'JAJ value ',bufr_chan,allchan(2,bufr_chan),temperature(bufr_chan), &
 !JAJ                  dlat_earth_deg, dlon_earth_deg
 !JAJ endif
 
-                else
-                   temperature(bufr_chan) = tbmin
-                endif
+              else
+                temperature(bufr_chan) = tbmin
               end if
            end do channel_loop
 
@@ -751,7 +750,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               if ( bufr_index(i) == 0 ) cycle skip_loop
               bufr_chan = bufr_index(i)
               if(temperature(bufr_chan) <= tbmin .or. temperature(bufr_chan) > tbmax ) then
-                 temperature(bufr_chan) = min(tbmax,max(tbmin,temperature(bufr_chan)))
+                 temperature(bufr_chan) = tbmin
  !write(*,'(a10,1x,i6,1x,e7.3,1x,f9.5,1x,f9.5)')  'JAJ bad value ',bufr_chan,allchan(2,bufr_chan),scalef(bufr_chan)
 ! write(*,'(a14,1x,i6,1x,e12.3,1x,f10.5,1x,f10.5)')  'JAJ bad value ',bufr_chan,allchan(2,bufr_chan),dlat_earth_deg, dlon_earth_deg
                  if(iuse_rad(ioff+i) >= 0)iskip = iskip + 1
@@ -780,7 +779,6 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               call finalcheck(one,crit1,itx,iuse)
            endif
            if(.not. iuse)cycle read_loop
-           nread = nread + 1
 
 !   Read the imager cluster information for the Cloud and Aerosol Detection Software.
 !   Only channels 4 and 5 are used.
@@ -931,9 +929,8 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 !          Put satinfo defined channel temperatures into data array
            do l=1,satinfo_nchan
               ! Prevent out of bounds reference from temperature
-              if ( bufr_index(l) == 0 ) cycle
               i = bufr_index(l)
-              if(i /= 0)then
+              if(bufr_index(l) /= 0) then
                  data_all(l+nreal,itx) = temperature(i)   ! brightness temerature
               else
                  data_all(l+nreal,itx) = tbmin
