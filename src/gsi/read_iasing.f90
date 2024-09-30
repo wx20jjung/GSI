@@ -315,7 +315,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
 !  find imager sensorindex
   sensorindex_imager = 0
-  iasing_cads = .true.   !JAJ to be removed
+!JAJ  iasing_cads = .true.   !JAJ to be removed
   if ( iasing_cads .and. imager_coeff ) then
      if ( sc(2)%sensor_id(1:7) == 'metimag' ) then
         sensorindex_imager = 2
@@ -681,7 +681,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               endif
            end do
 
-!JAJ NEED TO CHECK THIS ONB
+!JAJ NEED TO CHECK THIS ONE
 !          Read IASI-NG channel number(CHNM) and radiance (SCRA)
            call ufbseq(lnbufr,allchan,2,bufr_nchan,iret,'I1CRSQ')
            jstart=1
@@ -724,7 +724,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
              cycle read_loop
            endif
 
-!JAJ  !$omp parallel do schedule(dynamic,1) private(i,sc_chan,bufr_chan,radiance)
+!$omp parallel do schedule(dynamic,1) private(i,sc_chan,bufr_chan,radiance)
            channel_loop: do i=1,satinfo_nchan
               sc_chan = sc_index(i)
               if (bufr_index(i) == 0 ) cycle channel_loop
@@ -733,12 +733,6 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               if (( allchan(2,bufr_chan) > zero .and. allchan(2,bufr_chan) < 99999._r_kind)) then  ! radiance bounds
                 radiance = allchan(2,bufr_chan)*scalef(bufr_chan)
                 call crtm_planck_temperature(sensorindex_iasing,sc_chan,radiance,temperature(bufr_chan))
-!JAJ if (( temperature(bufr_chan) > 220.0_r_kind .and. temperature(bufr_chan) < 300.0_r_kind) .and. &
-!JAJ      (bufr_chan > 500 .and. bufr_chan < 5000)) then
-!JAJ   write(*,'(a10,1x,i6,1x,e15.3,1x,f7.2,1x,f10.5,1x,f10.5)')  'JAJ value ',bufr_chan,allchan(2,bufr_chan),temperature(bufr_chan), &
-!JAJ                  dlat_earth_deg, dlon_earth_deg
-!JAJ endif
-
               else
                 temperature(bufr_chan) = tbmin
               end if
@@ -751,8 +745,6 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               bufr_chan = bufr_index(i)
               if(temperature(bufr_chan) <= tbmin .or. temperature(bufr_chan) > tbmax ) then
                  temperature(bufr_chan) = tbmin
- !write(*,'(a10,1x,i6,1x,e7.3,1x,f9.5,1x,f9.5)')  'JAJ bad value ',bufr_chan,allchan(2,bufr_chan),scalef(bufr_chan)
-! write(*,'(a14,1x,i6,1x,e12.3,1x,f10.5,1x,f10.5)')  'JAJ bad value ',bufr_chan,allchan(2,bufr_chan),dlat_earth_deg, dlon_earth_deg
                  if(iuse_rad(ioff+i) >= 0)iskip = iskip + 1
               endif
            end do skip_loop
