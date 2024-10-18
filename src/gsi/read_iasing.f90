@@ -185,7 +185,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
 ! Set standard parameters
   character(8),parameter:: fov_flag="crosstrk"
-  integer(i_kind),parameter:: sfc_channel=2539
+  integer(i_kind),parameter:: sfc_channel=2541
   integer(i_kind),parameter:: ichan=-999         ! fov-based surface code is not channel specific for iasing 
   real(r_kind),parameter:: expansion=one         ! exansion factor for fov-based surface code.
                                                  ! use one for ir sensors.
@@ -681,7 +681,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               endif
            end do
 
-!JAJ NEED TO CHECK THIS ONB
+!JAJ NEED TO CHECK THIS ONE
 !          Read IASI-NG channel number(CHNM) and radiance (SCRA)
            call ufbseq(lnbufr,allchan,2,bufr_nchan,iret,'I1CRSQ')
            jstart=1
@@ -724,7 +724,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
              cycle read_loop
            endif
 
-!JAJ  !$omp parallel do schedule(dynamic,1) private(i,sc_chan,bufr_chan,radiance)
+!$omp parallel do schedule(dynamic,1) private(i,sc_chan,bufr_chan,radiance)
            channel_loop: do i=1,satinfo_nchan
               sc_chan = sc_index(i)
               if (bufr_index(i) == 0 ) cycle channel_loop
@@ -759,7 +759,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
            if(iskip > 0)then
               if(print_verbose)write(6,*) ' READ_IASI-NG: iskip > 0 ',iskip
-              cycle read_loop 
+!JAJ add             cycle read_loop 
            end if
 
 !          crit1=crit1 + ten*real(iskip,r_kind)
