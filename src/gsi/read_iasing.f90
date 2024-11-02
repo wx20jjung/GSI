@@ -62,7 +62,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
   use satthin, only: radthin_time_info,tdiff2crit
   use obsmod,  only: time_window_max
   use radinfo, only:iuse_rad,nuchan,nusis,jpch_rad,crtm_coeffs_path,use_edges, &
-      radedge1,radedge2,radstart,radstep
+      radedge1,radedge2
   use crtm_module, only: success, &
       crtm_kind => fp
   use crtm_planck_functions, only: crtm_planck_temperature
@@ -117,10 +117,9 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
   real(r_double),dimension(13) :: allspot
   real(r_double),allocatable,dimension(:,:) :: allchan
   real(r_double),dimension(3,4):: cscale 
-  real(r_double),dimension(7):: cloud_frac
+  real(r_double),dimension(7):: cluster_frac
   integer(i_kind) :: bufr_size
   
-  real(r_kind)      :: step, start,step_adjust
   character(len=8)  :: subset
   character(len=4)  :: senname
   character(len=80) :: allspotlist
@@ -140,7 +139,6 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
   real(r_kind)     :: piece
   real(r_kind)     :: rsat, dlon, dlat
   real(r_kind)     :: dlon_earth,dlat_earth,dlon_earth_deg,dlat_earth_deg
-  real(r_kind)     :: lza, lzaest,sat_height_ratio
   real(r_kind)     :: pred, crit1, dist1
   real(r_kind)     :: sat_zenang
   real(crtm_kind)  :: radiance
@@ -156,21 +154,21 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
   real(r_kind) cdist,disterr,disterrmax,dlon00,dlat00
 
   logical          :: outside,iuse,assim,valid
-  logical          :: iasing,quiet,cloud_info
+  logical          :: quiet,cloud_info
 
   integer(i_kind)  :: ifov, ifor, istep, ipos, instr, iscn, ioff, sensorindex_iasing
   integer(i_kind)  :: i, j, l, iskip, ifovn, bad_line, ksatid, kidsat, llll
   integer(i_kind)  :: nreal, isflg
   integer(i_kind)  :: itx, k, nele, itt, n
-  integer(i_kind):: iexponent,maxinfo, bufr_nchan, dval_info
-  integer(i_kind):: idomsfc(1)
-  integer(i_kind):: ntest
-  integer(i_kind):: error_status, irecx,ierr
-  integer(i_kind):: radedge_min, radedge_max
-  integer(i_kind)   :: subset_start, subset_end, satinfo_nchan, sc_chan, bufr_chan
-  integer(i_kind)   :: sfc_channel_index
-  integer(i_kind),allocatable, dimension(:) :: channel_number, sc_index, bufr_index
-  integer(i_kind),allocatable, dimension(:) :: bufr_chan_test
+  integer(i_kind)  :: iexponent,maxinfo, bufr_nchan, dval_info
+  integer(i_kind)  :: idomsfc(1)
+  integer(i_kind)  :: ntest
+  integer(i_kind)  :: error_status, irecx,ierr
+  integer(i_kind)  :: radedge_min, radedge_max
+  integer(i_kind)  :: subset_start, subset_end, satinfo_nchan, sc_chan, bufr_chan
+  integer(i_kind)  :: sfc_channel_index
+  integer(i_kind),allocatable, dimension(:)  :: channel_number, sc_index, bufr_index
+  integer(i_kind),allocatable, dimension(:)  :: bufr_chan_test
   character(len=20),allocatable, dimension(:):: sensorlist
 
 ! Imager cluster information for CADS
@@ -187,13 +185,12 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
   character(8),parameter:: fov_flag="crosstrk"
   integer(i_kind),parameter:: sfc_channel=2541
   integer(i_kind),parameter:: ichan=-999         ! fov-based surface code is not channel specific for iasing 
-  real(r_kind),parameter:: expansion=one         ! exansion factor for fov-based surface code.
+  real(r_kind),parameter:: expansion=one         ! expansion factor for fov-based surface code.
                                                  ! use one for ir sensors.
   real(r_kind),parameter:: R90    =  90._r_kind
   real(r_kind),parameter:: R360   = 360._r_kind
-  real(r_kind),parameter:: tbmin  = 50._r_kind
+  real(r_kind),parameter:: tbmin  =  50._r_kind
   real(r_kind),parameter:: tbmax  = 550._r_kind
-  real(r_kind),parameter:: earth_radius = 6371000._r_kind
   integer(i_kind),parameter :: ilon = 3
   integer(i_kind),parameter :: ilat = 4
   real(r_kind)    :: ptime,timeinflat,crit0
@@ -215,7 +212,6 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
   ndata = 0
   nodata = 0
-  iasing = obstype == 'iasi-ng'
 
   bad_line=-1
 
@@ -223,7 +219,12 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
     call gsi_nstcoupler_skindepth(obstype, zob)         ! get penetration depth (zob) for the obstype
   endif
 
-  if (jsatid == 'metop-sg-a1') kidsat=24
+  if (jsatid == 'metop-sg-a1') then
+     kidsat=24
+  else
+     write(*,*) 'READ_IASI-NG: Unrecognized value for jsatid '//jsatid//': RETURNING'
+     return
+  endif
  
 !  write(6,*)'READ_IASI-NG: mype, mype_root,mype_sub, npe_sub,mpi_comm_sub', &
 !          mype, mype_root,mype_sub,mpi_comm_sub
@@ -241,8 +242,6 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
      if (trim(nusis(i))==trim(sis)) then
         ioff = min(ioff,i)   ! iasi-ng offset
         if (subset_start == 0) then
-!JAJ          step  = radstep(i)
-!JAJ          start = radstart(i)
           if (radedge1(i)/=-1 .and. radedge2(i)/=-1) then
              radedge_min=radedge1(i)
              radedge_max=radedge2(i)
@@ -259,14 +258,13 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
   allocate(bufr_index(satinfo_nchan)) 
   ioff = ioff - 1 
 
-  step_adjust = 0.625_r_kind
 ! If all channels of a given sensor are set to monitor or not
 ! assimilate mode (iuse_rad<1), reset relative weight to zero.
 ! We do not want such observations affecting the relative
 ! weighting between observations within a given thinning group.
   if (.not.assim) val_iasing=zero
 
-  if (mype_sub==mype_root)write(6,*)'READ_IASI-NG:  iasi-ng offset ',ioff
+  if (mype_sub==mype_root) write(6,*)'READ_IASI-NG:  iasi-ng offset ',ioff
 
   senname = 'IASI-NG'
   
@@ -304,8 +302,8 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
 !  find IASI-NG sensorindex
   sensorindex_iasing = 0
+  if ( sc(1)%sensor_id(1:7) == 'iasi-ng' .or. sc(1)%sensor_id == '999') then
 !JAJ  if ( sc(1)%sensor_id(1:7) == 'iasi-ng' ) then
-  if ( sc(1)%sensor_id == '999' ) then
      sensorindex_iasing = 1
   else
      write(6,*)'READ_IASI-NG: ***ERROR*** sensorindex_iasi-ng not set  NO IASI-NG DATA USED'
@@ -315,7 +313,6 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
 !  find imager sensorindex
   sensorindex_imager = 0
-!JAJ  iasing_cads = .true.   !JAJ to be removed
   if ( iasing_cads .and. imager_coeff ) then
      if ( sc(2)%sensor_id(1:7) == 'metimag' ) then
         sensorindex_imager = 2
@@ -345,7 +342,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
 ! Calculate parameters needed for FOV-based surface calculation.
   if (isfcalc==1)then
-     instr=18
+     instr=18  !This is actually IASI.  Must be changed for IASI-NG if used.
      call instrument_init(instr, jsatid, expansion, valid)
      if (.not. valid) then
         if (assim) then 
@@ -406,11 +403,12 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
         infile2=trim(infile)//'_db'  ! Set bufr subset names based on type of data to read
      end if
 
-!    Open BUFR file
+! Open BUFR file
      open(lnbufr,file=trim(infile2),form='unformatted',status='old',iostat=ierr)
 
      if(ierr /= 0) cycle ears_db_loop
-!    Open BUFR table
+
+! Open BUFR table
      call openbf(lnbufr,'IN',lnbufr)
      call datelen(10)
 
@@ -425,7 +423,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
         read_loop: do while (ireadsb(lnbufr)==0)
 
-!          Get the size of the channels and radiance (allchan) array
+! Get the size of the channels and radiance (allchan) array
            call ufbint(lnbufr,crchn_reps,1,1,iret,'(I1CRSQ)')
            bufr_nchan = int(crchn_reps)
 
@@ -440,16 +438,16 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               bufr_chan_test(:)=0
            endif       !  allocation if
 
-!          Read IASI-NG FOV information
+! Read IASI-NG FOV information
            call ufbint(lnbufr,linele,5,1,iret,'FOVN SLNM INGGQF SELV SAID')
 
-!          Extract satellite id.  If not the one we want, read next subset
+! Extract satellite id.  If not the one we want, read next subset
            ksatid=nint(linele(5))
            if(ksatid /= kidsat) cycle read_loop
 
            if ( linele(3) /= zero) cycle read_loop  ! problem with profile (INGGQF)
 
-!          zenith angle/scan spot mismatch, reject entire line
+! Zenith angle/scan spot mismatch, reject entire line
            if ( bad_line == nint(linele(2))) then
               cycle read_loop
            else
@@ -457,30 +455,16 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
            endif
 
            ifov = nint(linele(1))               ! field of view
-
-!          IASI-NG fov ranges from 1 to 112.   Current angle dependent bias
-!          correction has a maximum of 90 scan positions.   Geometry
-!          of IASI-NG scan allows us to remap 1-112 to 1-56.   Variable
-!          ifovn below contains the remapped IASI-NG fov.  This value is
-!          passed on to and used in setuprad
-!JAJ           ifovn = (ifov-1)/2 + 1
-
-!          Remove data on edges
-!JAJ           if (.not. use_edges .and. &
-!JAJ             (ifovn < radedge_min .OR. ifovn > radedge_max )) cycle read_loop
-
-!          Check field of view (FOVN) and satellite zenith angle (SAZA)
-           iscn = nint(linele(2))               ! scan line
-           if( ifov < 1 .or. ifov > 16) then
+           if ( ifov < 1 .or. ifov > 224 ) then ! field of view out of range
               write(6,*)'READ_IASI-NG:  ### ERROR IN READING ', senname, ' BUFR DATA:', &
-                 ' STRANGE OBS INFO(FOVN,SLNM):', ifov, iscn
+                 ' BAD FIELD OF VIEW:', ifov 
               cycle read_loop
            endif
 
            call ufbint(lnbufr,allspot,13,1,iret,allspotlist)
            if(iret /= 1) cycle read_loop
 
-!          Check observing position
+! Check observing position
            dlat_earth = allspot(8)   ! latitude
            dlon_earth = allspot(9)   ! longitude
            if( abs(dlat_earth) > R90  .or. abs(dlon_earth) > R360 .or. &
@@ -490,7 +474,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               cycle read_loop
            endif
 
-!          Retrieve observing position
+! Retrieve observing position
            if(dlon_earth >= R360)then
               dlon_earth = dlon_earth - R360
            else if(dlon_earth < ZERO)then
@@ -502,7 +486,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
            dlat_earth = dlat_earth * deg2rad
            dlon_earth = dlon_earth * deg2rad
 
-!          If regional, map obs lat,lon to rotated grid.
+! If regional, map obs lat,lon to rotated grid.
            if(regional)then
 
 !             Convert to rotated coordinate.  dlon centered on 180 (pi),
@@ -517,12 +501,11 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
                  disterr=acos(cdist)*rad2deg
                  disterrmax=max(disterrmax,disterr)
               end if
-
-!             Check to see if in domain.  outside=.true. if dlon_earth,
-!             dlat_earth outside domain, =.false. if inside
+ 
+! Check to see if in domain.  outside=.true. if dlon_earth and dlat_earth outside domain =.false. if inside
               if(outside) cycle read_loop
 
-!          Global case 
+! Global case 
            else
               dlat = dlat_earth
               dlon = dlon_earth
@@ -530,7 +513,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               call grdcrd1(dlon,rlons,nlon,1)
            endif
 
-!          Check obs time
+! Check obs time
            idate5(1) = nint(allspot(2)) ! year
            idate5(2) = nint(allspot(3)) ! month
            idate5(3) = nint(allspot(4)) ! day
@@ -549,7 +532,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
            endif
 
-!          Retrieve obs time
+! Retrieve obs time
            call w3fs21(idate5,nmind)
            t4dv = (real(nmind-iwinbgn,r_kind) + real(allspot(7),r_kind)*r60inv)*r60inv ! add in seconds
            sstime = real(nmind,r_kind) + real(allspot(7),r_kind)*r60inv ! add in seconds
@@ -561,7 +544,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               if (abs(tdiff)>twind) cycle read_loop
            endif
 
-!          Increment nread counter by satinfo_nchan
+! Increment nread counter by satinfo_nchan
            nread = nread + satinfo_nchan
 
            crit0 = 0.01_r_kind
@@ -572,52 +555,38 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
            if(.not. iuse)cycle read_loop
 
-!          Observational info
+! Observational info
            sat_zenang  = allspot(10)            ! satellite zenith angle
 
-!          Check  satellite zenith angle (SAZA)
+! Check  satellite zenith angle (SAZA)
            if(sat_zenang > 90._r_kind ) then
               write(6,*)'READ_IASI-NG:  ### ERROR IN READING ', senname, ' BUFR DATA:', &
                  ' STRANGE OBS INFO(FOVN,SLNM,SAZA,BEARAZ):', ifov, iscn, allspot(10),allspot(11)
               cycle read_loop
            endif
-!  Remove this code when the field-of-view spans 1-224 JAJ.
-           ifov = ( 59 - nint(sat_zenang)) / 2
-           ifov = min( 28, max(1,ifov))
 
-!  There are 16 fields-of-view within each field-of-reagard, a 4X4 matrix.
-!          |  1   2   3   4 |
-!          |  5   6   7   8 |
-!          |  9  10  11  12 |
-!          | 13  14  15  16 |
+! There are 16 fields-of-view within each field-of-reagard, a 4X4 matrix.
+!       |  1   2   3   4 |
+!       |  5   6   7   8 |
+!       |  9  10  11  12 |
+!       | 13  14  15  16 |
 
-!  There are 14 fields-of-regard in each scan line. So, there are 56 unique positions in the scan line.
-!  To determine the scan position:
-           ifor = ((ifov-1) / 16) + 1               ! Determine field-of-regard 
-           istep = ifov - (ifor * 16)               ! Determine field-of-view within field-of-regard
-           ipos = (ifor * 4) + mod(istep,4) + 1     ! Determine position of field-of-view within scan line
+! Add this code when field-of-view spans 1-224 JAJ.
+!         There are 14 fields-of-regard in each scan line. So, there are 56 unique positions in the scan line.
+!         To determine the scan position:
+          ifor = (ifov-1) / 16                     ! Determine field-of-regard 
+          istep = ifov - ((ifor) * 16)             ! Determine field-of-view within field-of-regard
+          ipos = (ifor * 4) + mod(istep,4)         ! Determine position of field-of-view within scan line
 
 ! Remove data on edges
-           if (.not. use_edges .and. &
-             (ipos < radedge_min .or. ipos > radedge_max)) cycle read_loop
+          if (.not. use_edges .and. &
+            (ipos < radedge_min .or. ipos > radedge_max)) cycle read_loop
 
-           if ( ipos <= 28 ) sat_zenang = - sat_zenang
+! Set sign of satellite zenith angle
+          if (ipos <= 28) sat_zenang = -sat_zenang
 
-!JAJ to be removed
-! Estimate scan angle and compare to zenith angle
-!JAJ           lza = ((start + real(ipos)* step) * deg2rad
-!JAJ           sat_height_ratio = (earth_radius + linele(4)) / earth_radius
-!JAJ           lzaest = asin(sat_height_ratio * sin(lza)) * rad2deg
-!JAJ           if (abs(sat_zenang - lzaest) > one) then
-!JAJ              write(6,*)' READ_IASI-NG WARNING uncertainty in lza ', &
-!JAJ                 lza*rad2deg,sat_zenang,sis,ifov,start,step,allspot(11),allspot(12),allspot(13)
-!JAJ              bad_line = iscn
-!JAJ              cycle read_loop
-!JAJ           endif
-
-!          "Score" observation.  We use this information to identify "best" obs
-!          Locate the observation on the analysis grid.  Get sst and land/sea/ice
-!          mask.  
+! "Score" observation.  We use this information to identify "best" obs
+!  Locate the observation on the analysis grid.  Get sst and land/sea/ice mask.
 !          isflg    - surface flag
 !                0 sea
 !                1 land
@@ -625,13 +594,13 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 !                3 snow
 !                4 mixed 
 
-!          When using FOV-based surface code, must screen out obs with bad fov numbers.
+! When using FOV-based surface code, must screen out obs with bad fov numbers.
            if (isfcalc == 1) then
               call fov_check(ifov,instr,ichan,valid)
               if (.not. valid) cycle read_loop
 
-!          When isfcalc is set to one, calculate surface fields using size/shape of fov.
-!          Otherwise, use bilinear interpolation.
+! When isfcalc is set to one, calculate surface fields using size/shape of fov.
+! Otherwise, use bilinear interpolation.
 
               call deter_sfc_fov(fov_flag,ifov,instr,ichan,real(allspot(11),r_kind),dlat_earth_deg, &
                               dlon_earth_deg,expansion,t4dv,isflg,idomsfc(1), &
@@ -641,19 +610,19 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
                  ts,tsavg,vty,vfr,sty,stp,sm,sn,zz,ff10,sfcr)
            endif
 
-!          Set common predictor parameters
+! Set common predictor parameters
            crit1 = crit1 + rlndsea(isflg)
  
            call checkob(one,crit1,itx,iuse)
            if(.not. iuse)cycle read_loop
 
-!          Clear Amount  (percent clear)
-!          Compute "score" for observation.  All scores>=0.0.  Lowest score is "best"
+! Compute "score" for observation.  All scores>=0.0.  Lowest score is "best"
            pred = r100
            cloud_info = .false.
-           call ufbrep(lnbufr,cloud_frac,1,7,iret,'ASCS')
-           if (iret == 7 .and. cloud_frac(1) <= r100 .and. cloud_frac(1) >= zero) then
-              pred = r100 - cloud_frac(1)
+           call ufbrep(lnbufr,cluster_frac,1,7,iret,'ASCS')
+!          Use size of warmest (first) cluster as thinning criteria.
+           if (iret == 7 .and. cluster_frac(1) <= r100 .and. cluster_frac(1) >= zero) then
+              pred = r100 - cluster_frac(1)
               cloud_info = .true.
            endif
 
@@ -667,11 +636,11 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               cycle read_loop
            end if
 
-!          The scaling factors are as follows, cscale(1) is the start channel number,
+! The scaling factors are as follows, cscale(1) is the start channel number,
 !                                     cscale(2) is the end channel number,
 !                                     cscale(3) is the exponent scaling factor
-!          In our case, there are 4 groups of cscale (dimension :: cscale(3,4))
-!          The units are W/m2..... you need to convert to mW/m2.... (subtract 5 from cscale(3,:)
+! In our case, there are 4 groups of cscale (dimension :: cscale(3,4))
+! The units are W/m2..... you need to convert to mW/m2.... (subtract 5 from cscale(3,:)
            do i=1,4  ! convert exponent scale factor to int and change units
               if(cscale(3,i) < bmiss) then
                 iexponent = -(nint(cscale(3,i)) - 5)
@@ -681,8 +650,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               endif
            end do
 
-!JAJ NEED TO CHECK THIS ONE
-!          Read IASI-NG channel number(CHNM) and radiance (SCRA)
+! Read IASI-NG channel number(CHNM) and radiance (SCRA)
            call ufbseq(lnbufr,allchan,2,bufr_nchan,iret,'I1CRSQ')
            jstart=1
            scalef=one
@@ -702,8 +670,8 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               cycle read_loop
            endif
 
-!          Coordinate bufr channels with satinfo file channels
-!          If this is the first time or a change in the bufr channels is detected, sync with satinfo file
+! Coordinate bufr channels with satinfo file channels
+! If this is the first time or a change in the bufr channels is detected, sync with satinfo file
            if (ANY(int(allchan(1,:)) /= bufr_chan_test(:))) then
               sfc_channel_index = 0
               bufr_index(:) = 0
@@ -738,7 +706,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               end if
            end do channel_loop
 
-!          Check for reasonable temperature values
+! Check for reasonable temperature values
            iskip = 0
            skip_loop: do i=1,satinfo_nchan
               if ( bufr_index(i) == 0 ) cycle skip_loop
@@ -750,21 +718,21 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
            end do skip_loop
 
            if(iskip > 0)then
-              if(print_verbose)write(6,*) ' READ_IASI-NG: iskip > 0 ',iskip
-!JAJ add             cycle read_loop 
+             if(print_verbose)write(6,*) ' READ_IASI-NG: iskip > 0 ',iskip
+             cycle read_loop 
            end if
 
 !          crit1=crit1 + ten*real(iskip,r_kind)
 
-!          If the surface channel exists (~960.0 cm-1) and the imager cloud information is missing, use an
-!          estimate of the surface temperature to determine if the profile may be clear.
+! If the surface channel exists (~960.0 cm-1) and the imager cloud information is missing, use an
+! estimate of the surface temperature to determine if the profile may be clear.
            if (.not. cloud_info) then
               pred = tsavg*0.98_r_kind - temperature(sfc_channel_index)
               pred = max(pred,zero)
               crit1=crit1 + pred
            endif
 
-!          Map obs to grids
+! Map obs to grids
            if (pred == zero) then
               call finalcheck(dist1,crit1,itx,iuse)
            else
@@ -772,8 +740,8 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
            endif
            if(.not. iuse)cycle read_loop
 
-!   Read the imager cluster information for the Cloud and Aerosol Detection Software.
-!   Only channels 4 and 5 are used.
+! Read the imager cluster information for the Cloud and Aerosol Detection Software.
+! Only channels 18 and 19 are used.
 
            if ( iasing_cads ) then
              call ufbseq(lnbufr,imager_info,123,7,iret,'IASICSSQ')
@@ -787,20 +755,19 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
                imager_conversion(1) = one / (sc(sensorindex_imager)%wavenumber(18) **2)
                imager_conversion(2) = one / (sc(sensorindex_imager)%wavenumber(19) **2)
 
-!  Order clusters from largest (1) to smallest (7)
+! Order clusters from largest (1) to smallest (7)
                imager_cluster_sort: do i=1,7
                  j = maxloc(imager_cluster_size,dim=1,mask=imager_cluster_flag)
                  imager_cluster_index(i) = j
                  imager_cluster_flag(j) = .FALSE.
                end do imager_cluster_sort
 
-!   Convert from radiance to brightness temperature for mean and standard deviation used by CADS.
-!   Imager cluster info added to data_all array
-
+! Convert from radiance to brightness temperature for mean and standard deviation used by CADS.
+! Imager cluster info added to data_all array
                imager_cluster_info: do j=1,7
                  i = imager_cluster_index(j)
 
-!   If the cluster size, or radiance values of channel 18 and 19 are zero, do not compute statistics for the cluster
+! If the cluster size, or radiance values of channel 18 and 19 are zero, do not compute statistics for the cluster
                  if ( imager_cluster_size(i) > zero .and. imager_info(105,i) > zero .and. imager_info(111,i) > zero ) then
                    data_all(maxinfo+j,itx) =  imager_cluster_size(i)                ! Imager cluster fraction
 
@@ -830,7 +797,6 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
                end do imager_cluster_info
 
 ! Compute cluster averages for each channel
-
                imager_mean(1) = sum(imager_cluster_size(:) * imager_info(105,:))      ! Channel 18 radiance cluster average
                imager_std_dev(1) = sum(imager_cluster_size(:) * (imager_info(105,:)**2 + imager_info(107,:)**2)) - imager_mean(1)**2
                imager_std_dev(1) = sqrt(max(imager_std_dev(1),zero))                 ! Channel 18 radiance RMSE
@@ -859,9 +825,8 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
                data_all(maxinfo+1 : maxinfo+cads_info,itx) = zero
              endif
            endif ! iasing_cads = .true.
-!
-!          interpolate NSST variables to Obs. location and get dtw, dtc, tz_tr
-!
+
+! Interpolate NSST variables to Obs. location and get dtw, dtc, tz_tr
            if ( nst_gsi > 0 ) then
               tref  = ts(0)
               dtw   = zero
@@ -879,8 +844,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
            data_all(4,itx) = dlat                      ! grid relative latitude
            data_all(5,itx) = sat_zenang*deg2rad        ! satellite zenith angle (rad)
            data_all(6,itx) = allspot(11)               ! satellite azimuth angle (deg)
-!JAJ           data_all(7,itx) = lza                       ! look angle (rad)
-           data_all(7,itx) = sat_zenang*deg2rad                       ! look angle (rad)
+           data_all(7,itx) = sat_zenang*deg2rad        ! look angle (rad)
            data_all(8,itx) = ifov                      ! fov number
            data_all(9,itx) = allspot(12)               ! solar zenith angle (deg)
            data_all(10,itx)= allspot(13)               ! solar azimuth angle (deg)
@@ -918,7 +882,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               data_all(maxinfo+cads_info+dval_info+4,itx) = tz_tr        ! d(Tz)/d(Tr)
            endif
 
-!          Put satinfo defined channel temperatures into data array
+! Put satinfo defined channel temperatures into data array
            do l=1,satinfo_nchan
               ! Prevent out of bounds reference from temperature
               i = bufr_index(l)
@@ -949,7 +913,6 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
 ! If multiple tasks read input bufr file, allow each tasks to write out
 ! information it retained and then let single task merge files together
-
   call combine_radobs(mype_sub,mype_root,npe_sub,mpi_comm_sub,&
      nele,itxmax,nread,ndata,data_all,score_crit,nrec)
 
@@ -957,9 +920,8 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 ! and write out data to scratch file for further processing.
   if (mype_sub==mype_root.and.ndata>0) then
 
-!    Identify "bad" observation (unreasonable brightness temperatures).
-!    Update superobs sum according to observation location
-
+! Identify "bad" observation (unreasonable brightness temperatures).
+! Update superobs sum according to observation location
      do n=1,ndata
         do i=1,satinfo_nchan
            if(data_all(i+nreal,n) > tbmin .and. &
@@ -974,7 +936,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
         end do
      end if
 
-!    Write final set of "best" observations to output file
+! Write final set of "best" observations to output file
      call count_obs(ndata,nele,ilat,ilon,data_all,nobs)
      write(lunout) obstype,sis,nreal,satinfo_nchan,ilat,ilon
      write(lunout) ((data_all(k,n),k=1,nele),n=1,ndata)
