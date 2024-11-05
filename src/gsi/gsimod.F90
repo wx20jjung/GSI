@@ -1067,7 +1067,7 @@
 !     airs_cads  : use the cloud and aerosol detection software for the AIRS instrument
 !     cris_cads  : use the cloud and aerosol detection software for CrIS instruments
 !     iasi_cads  : use the cloud and aerosol detection software for IASI instruments
-!     iasing_cads: use the cloud and aerosol detection software for IASI instruments
+!     iasing_cads: use the cloud and aerosol detection software for IASI-NG instruments
 !     
   
   namelist/obsqc/dfact,dfact1,erradar_inflate,tdrerr_inflate,oberrflg,&
