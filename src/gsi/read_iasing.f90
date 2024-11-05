@@ -419,11 +419,12 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
         read_loop: do while (ireadsb(lnbufr)==0)
 
 ! Get the size of the channels and radiance (allchan) array
+! This is a delayed replication. crchn_reps is the number of IASI-NG replications (channel and radiance)
            call ufbint(lnbufr,crchn_reps,1,1,iret,'(I1CRSQ)')
            bufr_nchan = int(crchn_reps)
 
            bufr_size = size(temperature,1)
-           if ( bufr_size /= bufr_nchan ) then ! Re-allocation if number of channels has changed
+           if ( bufr_size /= bufr_nchan ) then ! Re-allocation if number of channels has changed in the delayed replication
 !             Allocate the arrays needed for the channel and radiance array
               deallocate(temperature,allchan,bufr_chan_test,scalef)
               allocate(temperature(bufr_nchan))   ! dependent on # of channels in the bufr file
@@ -638,10 +639,12 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
               endif
            end do
 
-! Read IASI-NG channel number(CHNM) and radiance (SCRA)
+! Read IASI-NG channel number(CHNM) and radiance (SCRA).
            call ufbseq(lnbufr,allchan,2,bufr_nchan,iret,'I1CRSQ')
            jstart=1
            scalef=one
+
+! Determine the scaling factor (scalef(i)) for the radiance (allchan(2,i)) of each channel (allchan(1,i))           
            do i=1,bufr_nchan
                scaleloop: do j=jstart,4
                   if(allchan(1,i) >= cscale(1,j) .and. allchan(1,i) <= cscale(2,j))then
@@ -729,6 +732,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
            if(.not. iuse)cycle read_loop
 
 ! Read the imager cluster information for the Cloud and Aerosol Detection Software.
+! This is a nested fixed replication read of the metimage data.  
 ! Only channels 18 and 19 are used.
 
            if ( iasing_cads ) then
