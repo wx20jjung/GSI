@@ -298,7 +298,8 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 !  find IASI-NG sensorindex
   sensorindex_iasing = 0
   if ( sc(1)%sensor_id(1:7) == 'iasi-ng' .or. sc(1)%sensor_id == '999') then
-!JAJ  if ( sc(1)%sensor_id(1:7) == 'iasi-ng' ) then
+!TODO This is the correct code once the CRTM spectral coefficient is fixed.          
+!TODO JAJ  if ( sc(1)%sensor_id(1:7) == 'iasi-ng' ) then   
      sensorindex_iasing = 1
   else
      write(6,*)'READ_IASI-NG: ***ERROR*** sensorindex_iasi-ng not set  NO IASI-NG DATA USED'
@@ -560,7 +561,6 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 !       |  9  10  11  12 |
 !       | 13  14  15  16 |
 
-! Add this code when field-of-view spans 1-224 JAJ.
 !         There are 14 fields-of-regard in each scan line. So, there are 56 unique positions in the scan line.
 !         To determine the scan position:
           ifor = (ifov-1) / 16                     ! Determine field-of-regard 
