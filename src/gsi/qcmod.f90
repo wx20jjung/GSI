@@ -2112,6 +2112,8 @@ subroutine qc_irsnd(nchanl,is,ndat,nsig,ich,sea,land,ice,snow,luse,goessndr,airs
 !     goessndr     - logical flag - if goessndr data - true
 !     cris         - logical flag - if cris data - true
 !     avhrr        - logical flag - if avhrr data - true
+!     iasi         - logical flag - if iasi data - true
+!     iasing       - logical flag - if iasing data - true
 !     zsges        - elevation of guess
 !     cenlat       - latitude of observation
 !     frac_sea     - fraction of grid box covered with water
@@ -2434,8 +2436,6 @@ subroutine qc_irsnd(nchanl,is,ndat,nsig,ich,sea,land,ice,snow,luse,goessndr,airs
 ! default compute cloud stats, emc_legacy_cloud_detect 
   else  
     if ( lcloud > 0 ) then
-!JAJ    if ( lcloud > 0 .and. .not. iasing ) then
-
       do i=1,nchanl
 !       reject channels with iuse_rad(j)=-1 when they are peaking below the cloud
         j=ich(i)

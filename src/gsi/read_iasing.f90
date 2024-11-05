@@ -43,16 +43,13 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 !     nrec_start - first subset with useful information
 !     nrec_start_ears - first ears subset with useful information
 !     nrec_start_db - first db subset with useful information
+!     dval_use - logical for using dval
 !
 !   output argument list:
 !     nread    - number of BUFR IASI-NG observations read
 !     ndata    - number of BUFR IASI-NG profiles retained for further processing
 !     nodata   - number of BUFR IASI-NG observations retained for further processing
 !     nobs     - array of observations on each subdomain for each processor
-!
-! attributes:
-!   language: f90
-!   machine:  ibm RS/6000 SP
 !
 !$$$
 ! Use modules
@@ -157,7 +154,7 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
   logical          :: quiet,cloud_info
 
   integer(i_kind)  :: ifov, ifor, istep, ipos, instr, iscn, ioff, sensorindex_iasing
-  integer(i_kind)  :: i, j, l, iskip, ifovn, bad_line, ksatid, kidsat, llll
+  integer(i_kind)  :: i, j, l, iskip, ifovn, ksatid, kidsat, llll
   integer(i_kind)  :: nreal, isflg
   integer(i_kind)  :: itx, k, nele, itt, n
   integer(i_kind)  :: iexponent,maxinfo, bufr_nchan, dval_info
@@ -212,8 +209,6 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
   ndata = 0
   nodata = 0
-
-  bad_line=-1
 
   if (nst_gsi > 0 ) then
     call gsi_nstcoupler_skindepth(obstype, zob)         ! get penetration depth (zob) for the obstype
@@ -446,13 +441,6 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
            if(ksatid /= kidsat) cycle read_loop
 
            if ( linele(3) /= zero) cycle read_loop  ! problem with profile (INGGQF)
-
-! Zenith angle/scan spot mismatch, reject entire line
-           if ( bad_line == nint(linele(2))) then
-              cycle read_loop
-           else
-              bad_line = -1
-           endif
 
            ifov = nint(linele(1))               ! field of view
            if ( ifov < 1 .or. ifov > 224 ) then ! field of view out of range
