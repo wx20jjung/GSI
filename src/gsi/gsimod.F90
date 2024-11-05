@@ -1064,7 +1064,7 @@
 !
 !     Flags to use the new IR cloud detection routine.  Flag must be set to true to use the new routine.  The default
 !     (no flag or .false.) will use the default.
-!     airs_cads  : use the clod and aerosool detection software for the AIRS instrument
+!     airs_cads  : use the cloud and aerosol detection software for the AIRS instrument
 !     cris_cads  : use the cloud and aerosol detection software for CrIS instruments
 !     iasi_cads  : use the cloud and aerosol detection software for IASI instruments
 !     iasing_cads: use the cloud and aerosol detection software for IASI instruments
