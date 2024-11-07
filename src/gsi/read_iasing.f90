@@ -297,9 +297,12 @@ subroutine read_iasing(mype,val_iasing,ithin,isfcalc,rmesh,jsatid,gstime,&
 
 !  find IASI-NG sensorindex
   sensorindex_iasing = 0
+!TODO The final iasi-ng spectral coefficient file is not available yet.  The current file has '999' in place of iasi-ng. 
+!TODO The line below is a temporary fix to work around this problem in the CRTM spectral coefficient file. 
   if ( sc(1)%sensor_id(1:7) == 'iasi-ng' .or. sc(1)%sensor_id == '999') then
-!TODO This is the correct code once the CRTM spectral coefficient is fixed.          
-!TODO JAJ  if ( sc(1)%sensor_id(1:7) == 'iasi-ng' ) then   
+!TODO Remove the above line when the correct CRTM file is available
+!TODO   if ( sc(1)%sensor_id(1:7) == 'iasi-ng' ) then
+!TODO Use the above line once the CRTM spectral coefficient file is fixed 
      sensorindex_iasing = 1
   else
      write(6,*)'READ_IASI-NG: ***ERROR*** sensorindex_iasi-ng not set  NO IASI-NG DATA USED'
